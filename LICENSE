@@ -1,3 +1,7 @@
+Software code in this repository is licensed under the MIT License.
+Hardware design files, including schematics and PCB layouts in the /hardware
+folder, are licensed separately under CERN-OHL-W-2.0.
+
 MIT License
 
 Copyright (c) 2026 Michael Ndunwa
