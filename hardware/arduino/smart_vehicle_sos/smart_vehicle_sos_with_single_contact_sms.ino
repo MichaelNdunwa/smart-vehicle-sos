@@ -3,8 +3,7 @@
 SoftwareSerial sim808(2, 3); // RX, TX
 
 // Destination phone number configuration
-// const String TARGET_PHONE = "+2348130341656"; // Tule's number
-const String TARGET_PHONE = "+2348168313095"; // My bro's number
+const String TARGET_PHONE = "+2348130341656"; // Tule's number
 bool smsSent = false; // Flag to ensure it only sends ONE test SMS
 
 void setup() {
@@ -59,7 +58,7 @@ void sendSOS_SMS(String date, String time, String lat, String lon) {
   sim808.print("Vehicle Location Locked.\n");
   sim808.print("Date: "); sim808.println(date);
   sim808.print("Local Time: "); sim808.println(time);
-  sim808.print("Map Link: http://maps.google.com/maps?q=");
+  sim808.print("Map Link: https://www.google.com/maps?q=");
   sim808.print(lat);
   sim808.print(",");
   sim808.println(lon);
@@ -126,7 +125,7 @@ void processGPSData() {
       Serial.print("Date: "); Serial.println(cleanDate);
       Serial.print("Local Time (WAT): "); Serial.println(cleanTime);
       Serial.print("Google Maps Link: ");
-      Serial.print("http://maps.google.com/maps?q=");
+      Serial.print("https://www.google.com/maps?q=");
       Serial.print(latitude); Serial.print(","); Serial.println(longitude);
       Serial.println("-----------------------------------------------------");
       

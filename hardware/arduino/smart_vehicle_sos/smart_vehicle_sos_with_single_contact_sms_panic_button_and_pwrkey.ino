@@ -8,8 +8,19 @@ const int PIN_PANIC  = 8;    // ATmega phys pin 14 (PB0) → Panic Button switch
 
 // Destination phone number configuration
 const String TARGET_PHONE = "+2348130341656"; // Tule's number
-// const String TARGET_PHONE = "+2348168313095"; // My bro's number
-bool smsSent = false; // Flag to ensure it only sends ONE test SMS
+
+// Non-blocking Timing State Variables
+unsigned long lastGpsRequestTime = 0;
+unsigned long buttonPressedTime = 0;
+bool panicArmed = false;
+bool smsSent = false;
+
+// Global Cache Buffers for current location info
+String currentLat  = "NO_FIX_YET";
+String currentLon  = "NO_FIX_YET";
+String currentDate = "00/00/2026";
+String currentTime = "00:00:00";
+String lastRawStream = "Initializing stream parameters...";
 
 void setup() {
   // 1. Initialize control pins
@@ -18,7 +29,7 @@ void setup() {
   Serial.begin(115200);
   sim808.begin(9600);
   
-  Serial.println("=== Smart Vehicle SOS Tracker (SMS Test Mode) ===");
+  Serial.println("=== Smart Vehicle SOS Tracker (Full Dashboard Mode) ===");
 
   // 2. Automated SIM808 Negative-Switch Boot Sequence
   Serial.println("[SYS] Simulating manual Power Button press for 3 seconds...");
@@ -38,22 +49,81 @@ void setup() {
   delay(1000);
   clearBuffer();
 
-  Serial.println("System Ready. HOLD Panic Button (D8) down to trigger SMS transmission test...");
+  Serial.println("System Ready. Monitoring satellite stream and button layout state...");
   Serial.println("-----------------------------------------------------");
 }
 
 void loop() {
-  // Request GPS data
-  sim808.println("AT+CGNSINF"); 
-  delay(300); 
+  // 1. DYNAMIC TICKER CHECK: Read panic button state instantly every loop cycle
+  checkPanicButton();
+
+  // 2. NON-BLOCKING TIMER: Request GPS data string strictly once every 5 seconds
+  if (millis() - lastGpsRequestTime >= 5000) {
+    sim808.println("AT+CGNSINF"); 
+    lastGpsRequestTime = millis();
+    
+    // Only display background sync tracking stats if the user isn't actively pushing the panic button
+    if (!panicArmed && currentLat == "NO_FIX_YET") {
+      Serial.println("\n👉 STATUS: Synchronizing with GNSS data stream...");
+      Serial.print("Raw Stream: ");
+      Serial.println(lastRawStream);
+      Serial.println("-----------------------------------------------------");
+    }
+  }
   
-  processGPSData();
-  delay(4700); 
+  // 3. Process incoming hardware serial bytes dynamically
+  if (sim808.available()) {
+    processGPSData();
+  }
+
+  delay(100); // Fast cycle rate ensures smooth button hold calculations
 }
 
 void clearBuffer() {
   while (sim808.available()) {
     sim808.read();
+  }
+}
+
+void checkPanicButton() {
+  bool buttonIsPressed = (digitalRead(PIN_PANIC) == LOW);
+
+  if (buttonIsPressed) {
+    if (!panicArmed) {
+      // Pin transitions from floating to Ground (just pressed)
+      buttonPressedTime = millis();
+      panicArmed = true;
+      Serial.println("\n[PANIC] Button held — counting validation matrix...");
+    } else {
+      // Pin is being actively held down
+      unsigned long heldDuration = millis() - buttonPressedTime;
+      unsigned long secondsElapsed = heldDuration / 1000;
+      
+      // Visual Progress Ticker: Prints exactly once per second change boundary
+      static unsigned long lastPrintSecond = 0;
+      if (secondsElapsed != lastPrintSecond && secondsElapsed <= 10) {
+        Serial.print("[HOLDING] "); 
+        Serial.print(secondsElapsed); 
+        Serial.println("/10 seconds elapsed.");
+        lastPrintSecond = secondsElapsed;
+      }
+
+      // Check if button validation window threshold has cleared
+      if (heldDuration >= 10000) { 
+        if (!smsSent) {
+          Serial.println("\n[SUCCESS] 10 Second Security Threshold Crossed!");
+          sendSOS_SMS(currentDate, currentTime, currentLat, currentLon);
+          smsSent = true; // Block code execution from repeating continuous loop transmissions
+        }
+      }
+    }
+  } else {
+    // Pin returns high (button released)
+    if (panicArmed) {
+      Serial.println("[PANIC] Released early — validation cancelled.");
+      panicArmed = false;
+      smsSent = false; // Instantly re-arm flag parameters for your next test run
+    }
   }
 }
 
@@ -74,9 +144,14 @@ void sendSOS_SMS(String date, String time, String lat, String lon) {
   
   // 3. Construct the text message payload
   sim808.println("EMERGENCY ALERT!");
-  sim808.print("Vehicle Location Locked.\n");
+  if (lat == "NO_FIX_YET") {
+    sim808.print("Panic Button Verification: PASS!\n");
+    sim808.print("GPS Status: Still searching for satellite lock.\n");
+  } else {
+    sim808.print("Vehicle Location Locked.\n");
+  }
   sim808.print("Date: "); sim808.println(date);
-  sim808.print("Local Time: "); sim808.println(time);
+  sim808.print("Local Time (WAT): "); sim808.println(time);
   sim808.print("Map Link: https://maps.google.com/?q=");
   sim808.print(lat);
   sim808.print(",");
@@ -88,7 +163,7 @@ void sendSOS_SMS(String date, String time, String lat, String lon) {
   sim808.write(26); 
   
   Serial.println("SMS submitted to network. Waiting for confirmation code...");
-  delay(5000); // Give the module plenty of time to transmit
+  delay(5000); 
   showModuleResponse();
 }
 
@@ -105,6 +180,12 @@ void processGPSData() {
     response += c;
   }
   
+  // Cache the response to print on fallback loops if a lock isn't active yet
+  response.trim();
+  if (response.indexOf("AT+CGNSINF") == -1 && response.length() > 5) {
+    lastRawStream = response;
+  }
+  
   int targetIndex = response.indexOf("+CGNSINF: 1,1");
   
   if (targetIndex >= 0) {
@@ -119,8 +200,8 @@ void processGPSData() {
     
     if (parsed >= 3) {
       String rawDateTime = String(dateTimeBuf);
-      String latitude    = String(latBuf);
-      String longitude   = String(lonBuf);
+      currentLat         = String(latBuf);
+      currentLon         = String(lonBuf);
       
       // Parse Date/Time structures
       String year   = rawDateTime.substring(0, 4);
@@ -136,37 +217,19 @@ void processGPSData() {
       String formattedHour = String(localHour);
       if (localHour < 10) formattedHour = "0" + formattedHour;
       
-      String cleanDate = day + "/" + month + "/" + year;
-      String cleanTime = formattedHour + ":" + minute + ":" + second;
+      currentDate = day + "/" + month + "/" + year;
+      currentTime = formattedHour + ":" + minute + ":" + second;
       
-      // Print Dashboard Status
-      Serial.println("\n👉 STATUS: LOCATION LOCKED!");
-      Serial.print("Date: "); Serial.println(cleanDate);
-      Serial.print("Local Time (WAT): "); Serial.println(cleanTime);
-      Serial.print("Google Maps Link: ");
-      Serial.print("https://maps.google.com/?q=");
-      Serial.print(latitude); Serial.print(","); Serial.println(longitude);
-      Serial.println("-----------------------------------------------------");
-      
-      // Check if the Panic Button is being pressed (LOW) to execute SMS test
-      if (digitalRead(PIN_PANIC) == LOW) {
-        if (!smsSent) {
-          sendSOS_SMS(cleanDate, cleanTime, latitude, longitude);
-          smsSent = true; // Prevents sending continuous loop texts
-        }
-      } else {
-        // If they released the button, re-arm the flag so they can test it again
-        if (smsSent) {
-          Serial.println("[SYS] Button released. Rearming test trigger flag...");
-          smsSent = false;
-        }
+      // Only display the fully locked satellite dashboard if the button isn't being pressed down
+      if (!panicArmed) {
+        Serial.println("\n👉 STATUS: LOCATION LOCKED!");
+        Serial.print("Date: "); Serial.println(currentDate);
+        Serial.print("Local Time (WAT): "); Serial.println(currentTime);
+        Serial.print("Google Maps Link: ");
+        Serial.print("https://maps.google.com/?q=");
+        Serial.print(currentLat); Serial.print(","); Serial.println(currentLon);
+        Serial.println("-----------------------------------------------------");
       }
-      return; 
     }
   }
-  
-  Serial.println("\n👉 STATUS: Synchronizing with GNSS data stream...");
-  Serial.print("Raw Stream: ");
-  Serial.println(response);
-  Serial.println("-----------------------------------------------------");
 }
