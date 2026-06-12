@@ -41,15 +41,15 @@ SOS Button Held 10s
 - Trip start workflow that links waiting passengers to a vehicle trip.
 - Arduino/SIM808 scaffold for active-trip polling, GPS update posting, SMS alerting, and SOS triggering.
 - Socket.IO updates from backend to dashboard.
-- In-memory backend tables named after the intended production schema.
+- PostgreSQL persistence for passengers, contacts, trips, GPS logs, and SOS alerts.
 
 ## Tech Stack
 
 - Hardware: Arduino + SIM808 GSM/GPRS/GPS module
-- Backend: Node.js, Express, Socket.IO
+- Backend: Node.js, Express, Socket.IO, PostgreSQL
 - Passenger frontend: Next.js, React, Tailwind CSS
 - Dashboard frontend: Next.js, React, Tailwind CSS, Socket.IO client
-- Planned database tables: `passengers`, `contacts`, `trips`, `gps_logs`, `sos_alerts`
+- Database tables: `passengers`, `contacts`, `trips`, `gps_logs`, `sos_alerts`
 
 ## Project Structure
 
@@ -82,10 +82,18 @@ Run the backend and both frontend apps in separate terminals.
 cd software/backend
 npm install
 cp .env.example .env
+npm run db:migrate
 npm run dev
 ```
 
 Backend default URL: `http://localhost:4000`
+
+Before running `npm run db:migrate` for the first time, create the local PostgreSQL user and database:
+
+```bash
+sudo -u postgres psql -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'smart_vehicle_sos') THEN CREATE ROLE smart_vehicle_sos LOGIN PASSWORD 'smart_vehicle_sos_password'; END IF; END \$\$;"
+sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname = 'smart_vehicle_sos'" | grep -q 1 || sudo -u postgres createdb -O smart_vehicle_sos smart_vehicle_sos
+```
 
 ### Passenger Website
 
@@ -114,6 +122,7 @@ Backend environment variables are defined in [software/backend/.env.example](sof
 ```env
 PORT=4000
 CORS_ORIGIN=http://localhost:3000,http://localhost:3001
+DATABASE_URL=postgresql://smart_vehicle_sos:smart_vehicle_sos_password@localhost:5432/smart_vehicle_sos
 ```
 
 Both frontend apps default to `http://localhost:4000` for the backend. Set `NEXT_PUBLIC_API_URL` if the API runs elsewhere.
