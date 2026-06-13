@@ -12,7 +12,7 @@ const int PIN_LED_RED   = 10;
 // ── Backend config ──────────────────────────────────────────
 const char VEHICLE_ID[] PROGMEM = "VH-001";
 const char APN[]        PROGMEM = "web.gprs.mtnnigeria.net";
-const char API_HOST[]   PROGMEM = "light-frogs-try.loca.lt";
+const char API_HOST[]   PROGMEM = "engineers-below-diameter-aluminium.trycloudflare.com";
 const char API_TRIP[]   PROGMEM = "/api/trip/active";
 const char API_GPS[]    PROGMEM = "/api/gps/update";
 const char API_SOS[]    PROGMEM = "/api/sos/trigger";
@@ -146,11 +146,12 @@ bool httpGET(const char* path) {
 
   sim808.println(F("AT+HTTPINIT"));
   delay(300); clearBuffer();
+  sim808.println(F("AT+HTTPSSL=1")); delay(500); clearBuffer();
 
   sim808.println(F("AT+HTTPPARA=\"CID\",1"));
   delay(200); clearBuffer();
 
-  sim808.print(F("AT+HTTPPARA=\"URL\",\"http://"));
+  sim808.print(F("AT+HTTPPARA=\"URL\",\"https://"));
   sim808.print(bodyBuf);   // host
   sim808.print(path);
   sim808.println('"');
@@ -193,11 +194,12 @@ bool httpPOST(const char* path) {
 
   sim808.println(F("AT+HTTPINIT"));
   delay(300); clearBuffer();
+  sim808.println(F("AT+HTTPSSL=1")); delay(500); clearBuffer();
 
   sim808.println(F("AT+HTTPPARA=\"CID\",1"));
   delay(200); clearBuffer();
 
-  sim808.print(F("AT+HTTPPARA=\"URL\",\"http://"));
+  sim808.print(F("AT+HTTPPARA=\"URL\",\"https://"));
   sim808.print(host);
   sim808.print(path);
   sim808.println('"');

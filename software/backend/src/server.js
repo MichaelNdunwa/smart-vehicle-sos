@@ -178,6 +178,17 @@ app.get(
   })
 );
 
+
+app.get(
+  "/api/vehicles",
+  asyncHandler(async (_req, res) => {
+    const result = await query(
+      `SELECT DISTINCT vehicle_id AS "vehicleId" FROM trips ORDER BY vehicle_id ASC`
+    );
+    res.json({ vehicles: result.rows.map((r) => r.vehicleId) });
+  })
+);
+
 app.post(
   "/api/passenger/register",
   asyncHandler(async (req, res) => {
