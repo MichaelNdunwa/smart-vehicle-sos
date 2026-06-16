@@ -94,6 +94,7 @@ async function contactsForTrip(tripId, client = { query }) {
       INNER JOIN passengers p ON p.id = c.passenger_id
       WHERE p.trip_id = $1
       ORDER BY p.boarded_at ASC, c.phone_number ASC
+      LIMIT 5
     `,
     [tripId]
   );
