@@ -33,17 +33,14 @@ const char API_TRIP[]   PROGMEM = "/api/trip/active";
 const char API_GPS[]    PROGMEM = "/api/gps/update";
 const char API_SOS[]    PROGMEM = "/api/sos/trigger";
 
-// ── Shared global buffers (avoids static locals in functions) ─
-// statusBuf: holds "+HTTPACTION: 0,200,NNN" reply
+// ── Shared global buffers ───────────────────────────────────
 static char statusBuf[40];
-// respBuf: HTTP GET response body
 static char respBuf[300];
-// bodyBuf: HTTP POST JSON body (longest is ~160 chars)
 static char bodyBuf[165];
 
 // ── Trip / contact state ────────────────────────────────────
 char  tripId[37]      = "";
-char  contacts[5][16] = {};   // E.164 max is 15 chars + NUL
+char  contacts[5][16] = {};   
 int   contactCount    = 0;
 bool  tripActive      = false;
 
@@ -59,12 +56,27 @@ unsigned long panicPressStart     = 0;
 unsigned long lastCountSec        = 0xFFFFFFFFUL;
 bool panicArmed                   = false;
 bool panicSMSSent                 = false;
+bool panicTriggered               = false; // Signals HTTP to abort
 
 // ── GPS buffers ─────────────────────────────────────────────
 char latBuf[12];
 char lonBuf[12];
 char dateBuf[12];
 char timeBuf[10];
+
+// ============================================================
+//  NON-BLOCKING "SMART DELAY"
+//  Waits for MS, but continuously checks the panic button.
+//  Returns TRUE if a panic was triggered, signaling an abort.
+// ============================================================
+bool smartDelay(unsigned long ms) {
+  unsigned long start = millis();
+  while (millis() - start < ms) {
+    checkPanicButton();
+    if (panicTriggered) return true; // Abort ongoing operation
+  }
+  return false;
+}
 
 // ============================================================
 //  SETUP
@@ -80,9 +92,9 @@ void setup() {
   sim808.begin(9600);
   powerOnSIM808();
 
-  delay(1000);
+  smartDelay(1000);
   sim808.println(F("AT+CGNSPWR=1"));
-  delay(1000);
+  smartDelay(1000);
   clearBuffer();
 
   initGPRS();
@@ -97,11 +109,24 @@ void setup() {
 void loop() {
   checkPanicButton();
 
+  // If a 10-second hold just completed, take over the sequence
+  if (panicTriggered) {
+    panicTriggered = false; // Reset flag
+    Serial.println(F("\n>> 10s confirmed. Aborting routine tasks to send SOS..."));
+    
+    // Clean up any HTTP session that got cut off mid-way
+    sim808.println(F("AT+HTTPTERM"));
+    delay(300); clearBuffer(); 
+    
+    triggerPanicSMS();
+  }
+
+  // Normal Operations (Only run if button isn't currently being held down)
   if (!panicArmed) {
     powerOffCheck();
 
     sim808.println(F("AT+CGNSINF"));
-    delay(300);
+    if (smartDelay(300)) return; // Bail out if panic pressed while waiting
     processGPSData();
 
     unsigned long now = millis();
@@ -116,137 +141,205 @@ void loop() {
       if (latBuf[0] != '\0') postGPS();
     }
 
-    for (int i = 0; i < 47; i++) {
-      delay(100);
-      checkPanicButton();
-    }
-  } else {
-    delay(100);
+    // A brief non-blocking wait to pace the loop
+    smartDelay(1500); 
   }
 }
 
 // ============================================================
-//  GPRS INIT
+//  GPRS INIT (Robust Version)
 // ============================================================
 void initGPRS() {
-  Serial.println(F("Bringing up GPRS..."));
+  Serial.println(F("\n[GPRS] Initialising Network..."));
 
-  // Read APN from PROGMEM directly into bodyBuf (reuse; not used yet)
+  // 1. Check SIM Readiness
+  sim808.println(F("AT+CPIN?"));
+  smartDelay(500);
+  memset(respBuf, 0, sizeof(respBuf));
+  int p = 0; while(sim808.available() && p < sizeof(respBuf)-1) respBuf[p++] = sim808.read();
+  if (!strstr(respBuf, "READY")) {
+    Serial.println(F("[GPRS] SIM not ready!"));
+    return;
+  }
+
+  // 2. Wait for Cellular Registration (CREG)
+  Serial.print(F("[GPRS] Waiting for cell tower"));
+  bool registered = false;
+  for (int i = 0; i < 20; i++) {
+    if (panicTriggered) return; // Exit immediately if panic button is pressed
+    
+    sim808.println(F("AT+CREG?"));
+    smartDelay(500);
+    memset(respBuf, 0, sizeof(respBuf));
+    p = 0; while(sim808.available() && p < sizeof(respBuf)-1) respBuf[p++] = sim808.read();
+    
+    // Check for Home Network (,1) or Roaming (,5)
+    if (strstr(respBuf, ",1") || strstr(respBuf, ",5")) {
+      registered = true;
+      break;
+    }
+    Serial.print('.');
+    smartDelay(2000);
+  }
+  if (!registered) { Serial.println(F(" FAIL")); return; }
+  Serial.println(F(" OK"));
+
+  // 3. Open Bearer (Try up to 3 times, matching the working sketch)
   strcpy_P(bodyBuf, APN);
+  bool bearerOpen = false;
 
-  sim808.println(F("AT+SAPBR=3,1,\"Contype\",\"GPRS\""));
-  delay(500); clearBuffer();
+  for (int attempt = 1; attempt <= 3; attempt++) {
+    if (panicTriggered) return;
+    Serial.print(F("[GPRS] Bearer attempt ")); Serial.println(attempt);
 
-  sim808.print(F("AT+SAPBR=3,1,\"APN\",\""));
-  sim808.print(bodyBuf);
-  sim808.println('"');
-  delay(500); clearBuffer();
+    // Force close any stuck previous session
+    sim808.println(F("AT+SAPBR=0,1"));
+    smartDelay(1000); clearBuffer();
 
-  sim808.println(F("AT+SAPBR=1,1"));
-  delay(3000); clearBuffer();
+    // Ensure GPRS service is attached (CGATT)
+    sim808.println(F("AT+CGATT?"));
+    smartDelay(500);
+    memset(respBuf, 0, sizeof(respBuf));
+    p = 0; while(sim808.available() && p < sizeof(respBuf)-1) respBuf[p++] = sim808.read();
+    
+    if (!strstr(respBuf, ": 1")) {
+      Serial.println(F("       Attaching GPRS service..."));
+      sim808.println(F("AT+CGATT=1"));
+      smartDelay(4000); clearBuffer();
+    }
 
-  sim808.println(F("AT+SAPBR=2,1"));
-  delay(500);
-  showModuleResponse();
+    // Configure bearer
+    sim808.println(F("AT+SAPBR=3,1,\"Contype\",\"GPRS\""));
+    smartDelay(500); clearBuffer();
 
-  Serial.println(F("GPRS ready."));
+    sim808.print(F("AT+SAPBR=3,1,\"APN\",\""));
+    sim808.print(bodyBuf);
+    sim808.println('"');
+    smartDelay(500); clearBuffer();
+
+    // Open bearer
+    sim808.println(F("AT+SAPBR=1,1"));
+    smartDelay(3000); clearBuffer();
+
+    // Verify bearer is open and got an IP address
+    sim808.println(F("AT+SAPBR=2,1"));
+    smartDelay(500);
+    memset(respBuf, 0, sizeof(respBuf));
+    p = 0; while(sim808.available() && p < sizeof(respBuf)-1) respBuf[p++] = sim808.read();
+
+    if (strstr(respBuf, ",1,")) {
+      bearerOpen = true;
+      break;
+    }
+    
+    Serial.println(F("       Failed. Retrying..."));
+    smartDelay(2000);
+  }
+
+  if (bearerOpen) {
+    Serial.println(F("[GPRS] READY."));
+  } else {
+    Serial.println(F("[GPRS] Failed to open bearer."));
+  }
   Serial.println(F("--------------------------"));
 }
 
 // ============================================================
-//  HTTP GET  — uses global statusBuf / respBuf
+//  HTTP GET (Now fully non-blocking and abortable)
 // ============================================================
 bool httpGET(const char* path) {
-  // API_HOST is PROGMEM — build URL using bodyBuf as scratch
   strcpy_P(bodyBuf, API_HOST);
 
   sim808.println(F("AT+HTTPINIT"));
-  delay(300); clearBuffer();
+  if (smartDelay(300)) return false; clearBuffer();
 
   sim808.println(F("AT+HTTPPARA=\"CID\",1"));
-  delay(200); clearBuffer();
+  if (smartDelay(200)) return false; clearBuffer();
 
   sim808.print(F("AT+HTTPPARA=\"URL\",\"http://"));
   sim808.print(bodyBuf);   // host
   sim808.print(path);
   sim808.println('"');
-  delay(300); clearBuffer();
+  if (smartDelay(300)) return false; clearBuffer();
 
   sim808.println(F("AT+HTTPACTION=0"));
-  delay(6000);
+  if (smartDelay(6000)) return false; // This is where long waits used to block!
 
   memset(statusBuf, 0, sizeof(statusBuf));
   int p = 0;
   unsigned long t = millis();
-  while (millis() - t < 2000 && p < 39)
+  while (millis() - t < 2000 && p < 39) {
+    checkPanicButton();
+    if (panicTriggered) return false;
     if (sim808.available()) statusBuf[p++] = sim808.read();
+  }
 
   bool ok = (strstr(statusBuf, ",200,") != NULL);
 
   if (ok) {
     sim808.println(F("AT+HTTPREAD"));
-    // No delay here — SIM808 starts sending at ~1 char/ms (9600 baud).
-    // A delay(1000) would let the 64-byte SoftwareSerial buffer overflow and
-    // drop everything beyond byte 64 before the Arduino even starts reading.
-    // Reading immediately captures the full response in real-time.
     memset(respBuf, 0, sizeof(respBuf));
     int ri = 0;
     t = millis();
-    while (millis() - t < 4000 && ri < (int)sizeof(respBuf) - 1)
+    while (millis() - t < 4000 && ri < (int)sizeof(respBuf) - 1) {
+      checkPanicButton();
+      if (panicTriggered) return false;
       if (sim808.available()) respBuf[ri++] = sim808.read();
+    }
   }
 
   sim808.println(F("AT+HTTPTERM"));
-  delay(300); clearBuffer();
+  if (smartDelay(300)) return false; clearBuffer();
   return ok;
 }
 
 // ============================================================
-//  HTTP POST  — uses global statusBuf; body is already in bodyBuf
+//  HTTP POST (Now fully non-blocking and abortable)
 // ============================================================
 bool httpPOST(const char* path) {
-  // Reuse bodyBuf: caller must have already filled it with JSON.
-  // We need the host — copy it into a small local (it's only ~40 chars).
   char host[48];
   strcpy_P(host, API_HOST);
 
   sim808.println(F("AT+HTTPINIT"));
-  delay(300); clearBuffer();
+  if (smartDelay(300)) return false; clearBuffer();
 
   sim808.println(F("AT+HTTPPARA=\"CID\",1"));
-  delay(200); clearBuffer();
+  if (smartDelay(200)) return false; clearBuffer();
 
   sim808.print(F("AT+HTTPPARA=\"URL\",\"http://"));
   sim808.print(host);
   sim808.print(path);
   sim808.println('"');
-  delay(300); clearBuffer();
+  if (smartDelay(300)) return false; clearBuffer();
 
   sim808.println(F("AT+HTTPPARA=\"CONTENT\",\"application/json\""));
-  delay(200); clearBuffer();
+  if (smartDelay(200)) return false; clearBuffer();
 
   int bodyLen = strlen(bodyBuf);
   sim808.print(F("AT+HTTPDATA="));
   sim808.print(bodyLen);
   sim808.println(F(",5000"));
-  delay(1000); clearBuffer();
+  if (smartDelay(1000)) return false; clearBuffer();
 
   sim808.print(bodyBuf);
-  delay(2000); clearBuffer();
+  if (smartDelay(2000)) return false; clearBuffer();
 
   sim808.println(F("AT+HTTPACTION=1"));
-  delay(6000);
+  if (smartDelay(6000)) return false;
 
   memset(statusBuf, 0, sizeof(statusBuf));
   int p = 0;
   unsigned long t = millis();
-  while (millis() - t < 2000 && p < 39)
+  while (millis() - t < 2000 && p < 39) {
+    checkPanicButton();
+    if (panicTriggered) return false;
     if (sim808.available()) statusBuf[p++] = sim808.read();
+  }
 
   bool ok = (strstr(statusBuf, ",200,") != NULL || strstr(statusBuf, ",201,") != NULL);
 
   sim808.println(F("AT+HTTPTERM"));
-  delay(300); clearBuffer();
+  if (smartDelay(300)) return false; clearBuffer();
   return ok;
 }
 
@@ -256,19 +349,13 @@ bool httpPOST(const char* path) {
 void pollTrip() {
   Serial.println(F("[TRIP] Polling backend..."));
 
-  char vehicleId[8];
-  strcpy_P(vehicleId, VEHICLE_ID);
-
-  char apiTrip[24];
-  strcpy_P(apiTrip, API_TRIP);
-
-  // path fits in bodyBuf temporarily before httpGET overwrites host into it —
-  // but httpGET only writes to bodyBuf after we're done with path, so we use
-  // a small local path buffer here.
+  char vehicleId[8]; strcpy_P(vehicleId, VEHICLE_ID);
+  char apiTrip[24];  strcpy_P(apiTrip, API_TRIP);
   char path[48];
   snprintf(path, sizeof(path), "%s?vehicleId=%s", apiTrip, vehicleId);
 
   if (!httpGET(path)) {
+    if (panicTriggered) return; // Silent abort if interrupted
     Serial.println(F("[TRIP] No active trip."));
     tripActive   = false;
     contactCount = 0;
@@ -276,7 +363,7 @@ void pollTrip() {
     return;
   }
 
-  // ── Parse tripId ──────────────────────────────────────────
+  // Parse tripId
   char* tidPtr = strstr(respBuf, "\"tripId\":\"");
   if (tidPtr) {
     tidPtr += 10;
@@ -286,7 +373,7 @@ void pollTrip() {
     tripId[i] = '\0';
   }
 
-  // ── Parse contacts (phoneNumber objects) ──────────────────
+  // Parse contacts
   contactCount = 0;
   char* cursor = respBuf;
   while (contactCount < 5) {
@@ -301,27 +388,7 @@ void pollTrip() {
     cursor = phonePtr;
   }
 
-  // Fallback: bare string array  ["contacts":["+234..."]}
-  if (contactCount == 0) {
-    char* arr = strstr(respBuf, "\"contacts\":[");
-    if (arr) {
-      arr += 12;
-      while (*arr && *arr != ']' && contactCount < 5) {
-        while (*arr && *arr != '"' && *arr != ']') arr++;
-        if (*arr != '"') break;
-        arr++;
-        int i = 0;
-        while (*arr && *arr != '"' && i < 15)
-          contacts[contactCount][i++] = *arr++;
-        contacts[contactCount][i] = '\0';
-        if (i > 0) contactCount++;
-        if (*arr == '"') arr++;
-      }
-    }
-  }
-
   tripActive = (tripId[0] != '\0' && contactCount > 0);
-
   Serial.print(F("[TRIP] Active: "));
   Serial.print(tripId);
   Serial.print(F(" | Contacts: "));
@@ -329,7 +396,7 @@ void pollTrip() {
 }
 
 // ============================================================
-//  BUILD LOCATION JSON into bodyBuf  (shared by postGPS/postSOS)
+//  BUILD LOCATION JSON
 // ============================================================
 static void buildLocationBody(const char* vehicleId) {
   snprintf(bodyBuf, sizeof(bodyBuf),
@@ -347,9 +414,11 @@ void postGPS() {
   char apiGps[20];   strcpy_P(apiGps,   API_GPS);
 
   buildLocationBody(vehicleId);
-
   Serial.println(F("[GPS] Posting location..."));
-  Serial.println(httpPOST(apiGps) ? F("[GPS] Posted OK.") : F("[GPS] Post failed."));
+  bool success = httpPOST(apiGps);
+  if (!panicTriggered) {
+    Serial.println(success ? F("[GPS] Posted OK.") : F("[GPS] Post failed."));
+  }
 }
 
 // ============================================================
@@ -360,22 +429,26 @@ void postSOS() {
   char apiSos[20];   strcpy_P(apiSos,   API_SOS);
 
   buildLocationBody(vehicleId);
-
   Serial.println(F("[SOS] Posting SOS event to backend..."));
   Serial.println(httpPOST(apiSos) ? F("[SOS] Backend notified OK.") : F("[SOS] Backend post failed."));
 }
 
 // ============================================================
-//  PANIC BUTTON
+//  PANIC BUTTON LOGIC
 // ============================================================
 void checkPanicButton() {
   bool buttonDown = (digitalRead(PIN_PANIC) == LOW);
 
   if (buttonDown) {
+    // If we've already reached 10s and triggered the SMS, ignore further logic
+    // until the user physically lets go of the button.
+    if (panicSMSSent) return; 
+
     if (!panicArmed) {
       panicPressStart = millis();
       panicArmed      = true;
       panicSMSSent    = false;
+      panicTriggered  = false;
       lastCountSec    = 0xFFFFFFFFUL;
       Serial.println(F("\n[PANIC] Hold 10s to send SOS..."));
     }
@@ -391,19 +464,20 @@ void checkPanicButton() {
         Serial.print(i < (int)heldSec ? '|' : '.');
       Serial.print(F("] "));
       if (remaining > 0) { Serial.print(remaining); Serial.println(F("s left")); }
-      else                  Serial.println(F("SENDING!"));
+      else                 Serial.println(F("SENDING!"));
     }
 
     if (heldMs >= PANIC_HOLD_MS && !panicSMSSent) {
-      panicSMSSent = true;
-      Serial.println(F("\n>> 10s confirmed. Fetching GPS..."));
-      triggerPanicSMS();
+      panicSMSSent = true;   // Ensures it only fires once per press
+      panicTriggered = true; // Sets the flag to instantly abort ongoing HTTP tasks
     }
 
   } else {
+    // Button released
     if (panicArmed) {
       if (!panicSMSSent) Serial.println(F("[PANIC] Released early - cancelled."));
       panicArmed = false;
+      panicSMSSent = false;
     }
   }
 }
@@ -417,7 +491,7 @@ void triggerPanicSMS() {
   for (int attempt = 0; attempt < 3 && !gotFix; attempt++) {
     Serial.print(F("  GPS attempt ")); Serial.print(attempt + 1); Serial.println(F("/3..."));
     sim808.println(F("AT+CGNSINF"));
-    delay(600);
+    delay(600); // Standard delay is fine here, we are already in Panic Mode
     gotFix = readAndParseGPS();
     if (!gotFix) delay(1000);
   }
@@ -437,7 +511,6 @@ void triggerPanicSMS() {
 //  GPS PARSER
 // ============================================================
 bool readAndParseGPS() {
-  // Reuse respBuf for the raw NMEA response
   memset(respBuf, 0, sizeof(respBuf));
   int pos = 0;
   unsigned long t = millis();
