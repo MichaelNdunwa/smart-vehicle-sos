@@ -34,7 +34,7 @@ const char API_GPS[]    PROGMEM = "/api/gps/update";
 const char API_SOS[]    PROGMEM = "/api/sos/trigger";
 
 // ── Shared global buffers ───────────────────────────────────
-static char statusBuf[40];
+static char statusBuf[80];
 static char respBuf[300];
 static char bodyBuf[165];
 
@@ -152,28 +152,43 @@ void loop() {
 void initGPRS() {
   Serial.println(F("\n[GPRS] Initialising Network..."));
 
-  // 1. Check SIM Readiness
-  sim808.println(F("AT+CPIN?"));
-  smartDelay(500);
-  memset(respBuf, 0, sizeof(respBuf));
-  int p = 0; while(sim808.available() && p < sizeof(respBuf)-1) respBuf[p++] = sim808.read();
-  if (!strstr(respBuf, "READY")) {
-    Serial.println(F("[GPRS] SIM not ready!"));
+  // 1. Check SIM Readiness (Patiently wait up to 15 seconds)
+  Serial.print(F("[GPRS] Waiting for SIM card"));
+  bool simReady = false;
+  for (int i = 0; i < 15; i++) {
+    if (panicTriggered) return; // Exit if panic button pressed
+    
+    sim808.println(F("AT+CPIN?"));
+    smartDelay(500);
+    memset(respBuf, 0, sizeof(respBuf));
+    int p = 0; while(sim808.available() && p < sizeof(respBuf)-1) respBuf[p++] = sim808.read();
+    
+    if (strstr(respBuf, "READY")) {
+      simReady = true;
+      break;
+    }
+    Serial.print('.');
+    smartDelay(1000);
+  }
+  
+  if (!simReady) {
+    Serial.println(F(" FAIL!"));
+    Serial.println(F("[WARN] Could not read SIM. Is it inserted correctly?"));
     return;
   }
+  Serial.println(F(" OK"));
 
   // 2. Wait for Cellular Registration (CREG)
   Serial.print(F("[GPRS] Waiting for cell tower"));
   bool registered = false;
   for (int i = 0; i < 20; i++) {
-    if (panicTriggered) return; // Exit immediately if panic button is pressed
+    if (panicTriggered) return; 
     
     sim808.println(F("AT+CREG?"));
     smartDelay(500);
     memset(respBuf, 0, sizeof(respBuf));
-    p = 0; while(sim808.available() && p < sizeof(respBuf)-1) respBuf[p++] = sim808.read();
+    int p = 0; while(sim808.available() && p < sizeof(respBuf)-1) respBuf[p++] = sim808.read();
     
-    // Check for Home Network (,1) or Roaming (,5)
     if (strstr(respBuf, ",1") || strstr(respBuf, ",5")) {
       registered = true;
       break;
@@ -184,7 +199,7 @@ void initGPRS() {
   if (!registered) { Serial.println(F(" FAIL")); return; }
   Serial.println(F(" OK"));
 
-  // 3. Open Bearer (Try up to 3 times, matching the working sketch)
+  // 3. Open Bearer (Try up to 3 times)
   strcpy_P(bodyBuf, APN);
   bool bearerOpen = false;
 
@@ -200,7 +215,7 @@ void initGPRS() {
     sim808.println(F("AT+CGATT?"));
     smartDelay(500);
     memset(respBuf, 0, sizeof(respBuf));
-    p = 0; while(sim808.available() && p < sizeof(respBuf)-1) respBuf[p++] = sim808.read();
+    int p = 0; while(sim808.available() && p < sizeof(respBuf)-1) respBuf[p++] = sim808.read();
     
     if (!strstr(respBuf, ": 1")) {
       Serial.println(F("       Attaching GPRS service..."));
@@ -250,6 +265,10 @@ void initGPRS() {
 bool httpGET(const char* path) {
   strcpy_P(bodyBuf, API_HOST);
 
+  // 1. Terminate any stuck previous HTTP session
+  sim808.println(F("AT+HTTPTERM"));
+  smartDelay(300); clearBuffer();
+
   sim808.println(F("AT+HTTPINIT"));
   if (smartDelay(300)) return false; clearBuffer();
 
@@ -263,17 +282,41 @@ bool httpGET(const char* path) {
   if (smartDelay(300)) return false; clearBuffer();
 
   sim808.println(F("AT+HTTPACTION=0"));
-  if (smartDelay(6000)) return false; // This is where long waits used to block!
 
+  // 2. Actively wait for HTTPACTION URC (up to 20 seconds)
   memset(statusBuf, 0, sizeof(statusBuf));
   int p = 0;
   unsigned long t = millis();
-  while (millis() - t < 2000 && p < 39) {
+  bool actionFound = false;
+
+  while (millis() - t < 20000UL) {
     checkPanicButton();
     if (panicTriggered) return false;
-    if (sim808.available()) statusBuf[p++] = sim808.read();
+
+    while (sim808.available() && p < sizeof(statusBuf) - 1) {
+      statusBuf[p++] = sim808.read();
+      statusBuf[p] = '\0';
+    }
+    
+    if (strstr(statusBuf, "+HTTPACTION:")) {
+      smartDelay(100); // Breathe to let the rest of the string arrive
+      while (sim808.available() && p < sizeof(statusBuf) - 1) {
+        statusBuf[p++] = sim808.read();
+        statusBuf[p] = '\0';
+      }
+      actionFound = true;
+      break;
+    }
   }
 
+  if (!actionFound) {
+    Serial.println(F("  [HTTP] Timeout waiting for HTTPACTION"));
+    sim808.println(F("AT+HTTPTERM"));
+    smartDelay(300); clearBuffer();
+    return false;
+  }
+
+  // Check HTTP code (200 OK)
   bool ok = (strstr(statusBuf, ",200,") != NULL);
 
   if (ok) {
@@ -281,15 +324,24 @@ bool httpGET(const char* path) {
     memset(respBuf, 0, sizeof(respBuf));
     int ri = 0;
     t = millis();
-    while (millis() - t < 4000 && ri < (int)sizeof(respBuf) - 1) {
+    // 3. Actively read the response payload until \r\nOK
+    while (millis() - t < 5000 && ri < (int)sizeof(respBuf) - 1) {
       checkPanicButton();
       if (panicTriggered) return false;
-      if (sim808.available()) respBuf[ri++] = sim808.read();
+
+      while (sim808.available() && ri < (int)sizeof(respBuf) - 1) {
+        respBuf[ri++] = sim808.read();
+        respBuf[ri] = '\0';
+      }
+      if (strstr(respBuf, "\r\nOK")) break;
     }
+  } else {
+    Serial.print(F("  [HTTP] Request failed. Response: "));
+    Serial.println(statusBuf);
   }
 
   sim808.println(F("AT+HTTPTERM"));
-  if (smartDelay(300)) return false; clearBuffer();
+  smartDelay(300); clearBuffer();
   return ok;
 }
 
@@ -299,6 +351,10 @@ bool httpGET(const char* path) {
 bool httpPOST(const char* path) {
   char host[48];
   strcpy_P(host, API_HOST);
+
+  // 1. Terminate any stuck previous HTTP session
+  sim808.println(F("AT+HTTPTERM"));
+  smartDelay(300); clearBuffer();
 
   sim808.println(F("AT+HTTPINIT"));
   if (smartDelay(300)) return false; clearBuffer();
@@ -325,21 +381,49 @@ bool httpPOST(const char* path) {
   if (smartDelay(2000)) return false; clearBuffer();
 
   sim808.println(F("AT+HTTPACTION=1"));
-  if (smartDelay(6000)) return false;
 
   memset(statusBuf, 0, sizeof(statusBuf));
   int p = 0;
   unsigned long t = millis();
-  while (millis() - t < 2000 && p < 39) {
+  bool actionFound = false;
+
+  // 2. Actively wait for HTTPACTION URC (up to 20 seconds)
+  while (millis() - t < 20000UL) {
     checkPanicButton();
     if (panicTriggered) return false;
-    if (sim808.available()) statusBuf[p++] = sim808.read();
+
+    while (sim808.available() && p < sizeof(statusBuf) - 1) {
+      statusBuf[p++] = sim808.read();
+      statusBuf[p] = '\0';
+    }
+    
+    if (strstr(statusBuf, "+HTTPACTION:")) {
+      smartDelay(100); 
+      while (sim808.available() && p < sizeof(statusBuf) - 1) {
+        statusBuf[p++] = sim808.read();
+        statusBuf[p] = '\0';
+      }
+      actionFound = true;
+      break;
+    }
+  }
+
+  if (!actionFound) {
+    Serial.println(F("  [POST] Timeout waiting for HTTPACTION"));
+    sim808.println(F("AT+HTTPTERM"));
+    smartDelay(300); clearBuffer();
+    return false;
   }
 
   bool ok = (strstr(statusBuf, ",200,") != NULL || strstr(statusBuf, ",201,") != NULL);
+  
+  if (!ok) {
+    Serial.print(F("  [POST] Failed. Response: "));
+    Serial.println(statusBuf);
+  }
 
   sim808.println(F("AT+HTTPTERM"));
-  if (smartDelay(300)) return false; clearBuffer();
+  smartDelay(300); clearBuffer();
   return ok;
 }
 
