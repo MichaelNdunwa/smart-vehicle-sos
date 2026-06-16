@@ -98,8 +98,21 @@ async function contactsForTrip(tripId, client = { query }) {
     [tripId]
   );
 
-  // Return only phoneNumber — passengerId is omitted to keep the payload
-  // small enough for the SIM808's constrained response buffer (~300 bytes).
+  // ── Prototype hardware constraint ─────────────────────────────────────────
+  // This system uses a DIY SIM808 GSM module wired to an Arduino Uno, which
+  // has only 2 KB of SRAM and a 64-byte SoftwareSerial RX buffer.
+  // To keep the HTTP response payload within the Arduino's 300-byte read
+  // buffer, two constraints are applied here:
+  //
+  //   1. LIMIT 5  — matches the Arduino's hard-coded contacts[5][16] array.
+  //   2. phoneNumber only — passengerId (a 36-char UUID) is omitted because
+  //      the Arduino never uses it and including it bloats each contact entry
+  //      from ~28 bytes to ~85 bytes, pushing a 5-contact payload over the
+  //      buffer limit and causing silent truncation on the hardware.
+  //
+  // A production build with a more capable modem (e.g. SIM7600, ESP32 with
+  // GSM shield, or a proper IoT gateway) could remove both constraints.
+  // ──────────────────────────────────────────────────────────────────────────
   return result.rows.map((r) => ({ phoneNumber: r.phoneNumber }));
 }
 
