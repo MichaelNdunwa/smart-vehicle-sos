@@ -88,8 +88,7 @@ async function contactsForTrip(tripId, client = { query }) {
   const result = await client.query(
     `
       SELECT
-        c.phone_number AS "phoneNumber",
-        c.passenger_id::text AS "passengerId"
+        c.phone_number AS "phoneNumber"
       FROM contacts c
       INNER JOIN passengers p ON p.id = c.passenger_id
       WHERE p.trip_id = $1
@@ -99,7 +98,9 @@ async function contactsForTrip(tripId, client = { query }) {
     [tripId]
   );
 
-  return result.rows;
+  // Return only phoneNumber — passengerId is omitted to keep the payload
+  // small enough for the SIM808's constrained response buffer (~300 bytes).
+  return result.rows.map((r) => ({ phoneNumber: r.phoneNumber }));
 }
 
 async function latestGpsFor(vehicleId, client = { query }) {

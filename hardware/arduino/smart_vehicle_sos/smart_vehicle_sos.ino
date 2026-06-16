@@ -12,7 +12,7 @@ const int PIN_LED_RED   = 10;
 // ── Backend config ──────────────────────────────────────────
 const char VEHICLE_ID[] PROGMEM = "VH-001";
 const char APN[]        PROGMEM = "web.gprs.mtnnigeria.net";
-const char API_HOST[]   PROGMEM = "engineers-below-diameter-aluminium.trycloudflare.com";
+const char API_HOST[]   PROGMEM = "141.148.66.227:4000";
 const char API_TRIP[]   PROGMEM = "/api/trip/active";
 const char API_GPS[]    PROGMEM = "/api/gps/update";
 const char API_SOS[]    PROGMEM = "/api/sos/trigger";
@@ -146,12 +146,11 @@ bool httpGET(const char* path) {
 
   sim808.println(F("AT+HTTPINIT"));
   delay(300); clearBuffer();
-  sim808.println(F("AT+HTTPSSL=1")); delay(500); clearBuffer();
 
   sim808.println(F("AT+HTTPPARA=\"CID\",1"));
   delay(200); clearBuffer();
 
-  sim808.print(F("AT+HTTPPARA=\"URL\",\"https://"));
+  sim808.print(F("AT+HTTPPARA=\"URL\",\"http://"));
   sim808.print(bodyBuf);   // host
   sim808.print(path);
   sim808.println('"');
@@ -170,11 +169,14 @@ bool httpGET(const char* path) {
 
   if (ok) {
     sim808.println(F("AT+HTTPREAD"));
-    delay(1000);
+    // No delay here — SIM808 starts sending at ~1 char/ms (9600 baud).
+    // A delay(1000) would let the 64-byte SoftwareSerial buffer overflow and
+    // drop everything beyond byte 64 before the Arduino even starts reading.
+    // Reading immediately captures the full response in real-time.
     memset(respBuf, 0, sizeof(respBuf));
     int ri = 0;
     t = millis();
-    while (millis() - t < 3000 && ri < (int)sizeof(respBuf) - 1)
+    while (millis() - t < 4000 && ri < (int)sizeof(respBuf) - 1)
       if (sim808.available()) respBuf[ri++] = sim808.read();
   }
 
@@ -194,12 +196,11 @@ bool httpPOST(const char* path) {
 
   sim808.println(F("AT+HTTPINIT"));
   delay(300); clearBuffer();
-  sim808.println(F("AT+HTTPSSL=1")); delay(500); clearBuffer();
 
   sim808.println(F("AT+HTTPPARA=\"CID\",1"));
   delay(200); clearBuffer();
 
-  sim808.print(F("AT+HTTPPARA=\"URL\",\"https://"));
+  sim808.print(F("AT+HTTPPARA=\"URL\",\"http://"));
   sim808.print(host);
   sim808.print(path);
   sim808.println('"');
@@ -226,7 +227,7 @@ bool httpPOST(const char* path) {
   while (millis() - t < 2000 && p < 39)
     if (sim808.available()) statusBuf[p++] = sim808.read();
 
-  bool ok = (strstr(statusBuf, ",200,") || strstr(statusBuf, ",201,"));
+  bool ok = (strstr(statusBuf, ",200,") != NULL || strstr(statusBuf, ",201,") != NULL);
 
   sim808.println(F("AT+HTTPTERM"));
   delay(300); clearBuffer();
