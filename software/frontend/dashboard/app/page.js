@@ -25,7 +25,7 @@ export default function OverviewPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1200px] px-6 pb-10 pt-6">
+    <div className="max-w-[1200px] px-6 pb-10 pt-6">
       <header className="mb-6 flex items-center justify-between gap-5 max-sm:grid max-sm:items-start">
         <div className="animate-fade-in-up">
           <div className="mb-1 flex items-center gap-2.5">

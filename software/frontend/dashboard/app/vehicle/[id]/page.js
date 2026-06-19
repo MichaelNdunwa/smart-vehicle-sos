@@ -21,7 +21,7 @@ export default function VehicleDetailPage() {
   const isActive = !!trip;
 
   return (
-    <div className="mx-auto max-w-[1200px] px-6 pb-10 pt-6">
+    <div className="max-w-[1200px] px-6 pb-10 pt-6">
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div className="animate-fade-in-up">
           <div className="mb-1 flex items-center gap-2.5">
