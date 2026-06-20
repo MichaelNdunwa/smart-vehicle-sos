@@ -4,25 +4,47 @@ import { useState } from "react";
 import { useDashboard } from "../components/useDashboard";
 import OverviewMap from "../components/OverviewMap";
 import PaginatedPanel from "../components/PaginatedPanel";
+import NIGERIAN_STATES from "../data/nigerianStates";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 export default function OverviewPage() {
   const { dashboard, connected, activeTrips, latestGpsByVehicle } = useDashboard();
   const [vehicleId, setVehicleId] = useState("VH-001");
+  const [origin, setOrigin] = useState("");
+  const [destination, setDestination] = useState("");
   const [startStatus, setStartStatus] = useState("idle");
+  const [tripError, setTripError] = useState("");
 
   async function startTrip(event) {
     event.preventDefault();
+    setTripError("");
+
+    if (!origin || !destination) {
+      setTripError("Please select both origin and destination.");
+      return;
+    }
+
+    if (origin === destination) {
+      setTripError("Origin and destination cannot be the same.");
+      return;
+    }
+
     setStartStatus("starting");
 
     const response = await fetch(`${API_URL}/api/trip/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ vehicleId })
+      body: JSON.stringify({ vehicleId, origin, destination })
     });
 
-    setStartStatus(response.ok ? "started" : "failed");
+    if (response.ok) {
+      setStartStatus("started");
+      setOrigin("");
+      setDestination("");
+    } else {
+      setStartStatus("failed");
+    }
   }
 
   return (
@@ -77,6 +99,49 @@ export default function OverviewPage() {
               </p>
             </div>
             <div className="grid gap-4">
+              <div className="grid gap-3">
+                <label className="grid gap-1.5 text-sm font-semibold text-text-primary">
+                  Origin
+                  <select
+                    className="rounded-lg border border-border-default bg-surface-card px-4 py-2.5 text-sm font-normal text-text-primary outline-none ring-brand-200 transition-all duration-150 focus:border-brand-500 focus:ring-2"
+                    value={origin}
+                    onChange={(e) => setOrigin(e.target.value)}
+                  >
+                    <option value="">-- Select origin --</option>
+                    {NIGERIAN_STATES.map((state) => (
+                      <option key={state} value={state}>{state}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const temp = origin;
+                    setOrigin(destination);
+                    setDestination(temp);
+                  }}
+                  className="mx-auto -my-1 inline-flex h-7 w-7 items-center justify-center rounded-lg border border-border-default bg-surface-card text-text-muted transition-all duration-150 hover:border-brand-300 hover:text-brand-500"
+                  title="Swap origin and destination"
+                >
+                  <SwapIcon />
+                </button>
+
+                <label className="grid gap-1.5 text-sm font-semibold text-text-primary">
+                  Destination
+                  <select
+                    className="rounded-lg border border-border-default bg-surface-card px-4 py-2.5 text-sm font-normal text-text-primary outline-none ring-brand-200 transition-all duration-150 focus:border-brand-500 focus:ring-2"
+                    value={destination}
+                    onChange={(e) => setDestination(e.target.value)}
+                  >
+                    <option value="">-- Select destination --</option>
+                    {NIGERIAN_STATES.map((state) => (
+                      <option key={state} value={state}>{state}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
               <label className="grid gap-1.5 text-sm font-semibold text-text-primary">
                 Vehicle ID
                 <input
@@ -86,6 +151,13 @@ export default function OverviewPage() {
                   placeholder="e.g. VH-001"
                 />
               </label>
+
+              {tripError && (
+                <p className="flex items-center gap-1.5 text-sm font-medium text-danger-600">
+                  <XIcon /> {tripError}
+                </p>
+              )}
+
               <button
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-all duration-150 hover:bg-brand-600 hover:shadow active:scale-[0.98] disabled:cursor-wait disabled:opacity-60 disabled:hover:bg-brand-500"
                 disabled={startStatus === "starting"}
@@ -191,7 +263,12 @@ function ActiveVehicleCard({ trip, gps }) {
           Active
         </span>
       </div>
-      <div className="mt-3 flex items-center gap-2 text-xs text-text-secondary">
+      <div className="mt-3 grid gap-1 text-xs text-text-secondary">
+        {trip.origin && trip.destination && (
+          <p className="truncate">
+            {trip.origin} &rarr; {trip.destination}
+          </p>
+        )}
         <span className={`inline-flex items-center gap-1 ${gps ? "text-brand-600" : "text-text-muted"}`}>
           <span className={`h-1.5 w-1.5 rounded-full ${gps ? "bg-brand-500" : "bg-text-muted"}`} />
           GPS: {gps ? `${gps.lat}, ${gps.lng}` : "Waiting for update"}
@@ -356,6 +433,17 @@ function XIcon() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+function SwapIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="17 1 21 5 17 9" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+      <polyline points="7 23 3 19 7 15" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
     </svg>
   );
 }

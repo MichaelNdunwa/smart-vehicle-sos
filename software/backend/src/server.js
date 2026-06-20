@@ -40,7 +40,9 @@ const tripFields = `
   id::text,
   vehicle_id AS "vehicleId",
   status,
-  start_time AS "startTime"
+  start_time AS "startTime",
+  origin,
+  destination
 `;
 
 const gpsLogFields = `
@@ -260,7 +262,7 @@ app.post(
 app.post(
   "/api/trip/start",
   asyncHandler(async (req, res) => {
-    const { vehicleId } = req.body;
+    const { vehicleId, origin, destination } = req.body;
 
     if (!vehicleId) {
       return res.status(400).json({ error: "vehicleId is required" });
@@ -275,11 +277,11 @@ app.post(
 
       const tripResult = await client.query(
         `
-          INSERT INTO trips (vehicle_id, status)
-          VALUES ($1, 'active')
+          INSERT INTO trips (vehicle_id, status, origin, destination)
+          VALUES ($1, 'active', $2, $3)
           RETURNING ${tripFields}
         `,
-        [vehicleId]
+        [vehicleId, origin ?? null, destination ?? null]
       );
       const startedTrip = tripResult.rows[0];
 

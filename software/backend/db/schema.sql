@@ -12,6 +12,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS trips_one_active_per_vehicle
   ON trips (vehicle_id)
   WHERE status = 'active';
 
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS origin text;
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS destination text;
+
 CREATE TABLE IF NOT EXISTS passengers (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
