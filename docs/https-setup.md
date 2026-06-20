@@ -51,7 +51,7 @@ Let's Encrypt cannot issue certificates for bare IP addresses — a domain name 
 
 **Verify DNS from your local terminal:**
 ```bash
-nslookup smart-vehicle-sos.duckdns.org
+tlslookup smart-vehicle-sos.duckdns.org
 # Should return: 141.148.66.227
 ```
 
