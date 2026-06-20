@@ -25,7 +25,7 @@ export default function OverviewPage() {
   }
 
   return (
-    <div className="max-w-[1200px] px-6 pb-10 pt-6">
+    <div className="px-6 pb-10 pt-6">
       <header className="mb-6 flex items-center justify-between gap-5 max-sm:grid max-sm:items-start">
         <div className="animate-fade-in-up">
           <div className="mb-1 flex items-center gap-2.5">
@@ -45,97 +45,103 @@ export default function OverviewPage() {
         <MetricCard label="SOS alerts" value={dashboard.sosAlerts.length} danger icon={<SosIcon />} />
       </section>
 
-      <section className="mb-6">
-        <h2 className="mb-3 text-base font-bold text-text-primary">Vehicle positions</h2>
-        <OverviewMap gpsData={latestGpsByVehicle} connected={connected} />
-      </section>
+      <div className="grid gap-5 lg:grid-cols-[2fr_1fr]">
+        <div className="flex flex-col gap-5">
+          <section className="min-h-[500px]">
+            <h2 className="mb-3 text-base font-bold text-text-primary">Vehicle positions</h2>
+            <OverviewMap gpsData={latestGpsByVehicle} connected={connected} />
+          </section>
 
-      <section className="mb-6 grid gap-5 lg:grid-cols-[380px_1fr]">
-        <form
-          onSubmit={startTrip}
-          className="rounded-xl bg-surface-card p-6 shadow-sm ring-1 ring-border-default animate-fade-in-up"
-        >
-          <div className="mb-5">
-            <h2 className="text-base font-bold text-text-primary">Start trip</h2>
-            <p className="mt-1 text-sm leading-relaxed text-text-secondary">
-              Assign boarded passengers to an active trip for a vehicle.
-            </p>
-          </div>
-          <div className="grid gap-4">
-            <label className="grid gap-1.5 text-sm font-semibold text-text-primary">
-              Vehicle ID
-              <input
-                className="rounded-lg border border-border-default px-4 py-2.5 text-sm font-normal text-text-primary outline-none ring-brand-200 transition-all duration-150 placeholder:text-text-muted focus:border-brand-500 focus:ring-2"
-                onChange={(event) => setVehicleId(event.target.value)}
-                value={vehicleId}
-                placeholder="e.g. VH-001"
-              />
-            </label>
-            <button
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-all duration-150 hover:bg-brand-600 hover:shadow active:scale-[0.98] disabled:cursor-wait disabled:opacity-60 disabled:hover:bg-brand-500"
-              disabled={startStatus === "starting"}
-              type="submit"
-            >
-              {startStatus === "starting" ? (
-                <>
-                  <Spinner />
-                  Starting...
-                </>
+          <section className="grid gap-5 lg:grid-cols-2">
+            <div className="rounded-xl bg-surface-card p-6 shadow-sm ring-1 ring-border-default">
+              <h2 className="mb-4 text-base font-bold text-text-primary">Active vehicles</h2>
+              {activeTrips.length === 0 ? (
+                <EmptyState icon={<VehicleIcon />} text="No active trips." hint="Start a trip to see vehicle status here." />
               ) : (
-                "START TRIP"
+                <div className="grid gap-3">
+                  {activeTrips.map((trip) => (
+                    <ActiveVehicleCard key={trip.id} trip={trip} gps={latestGpsByVehicle[trip.vehicleId]} />
+                  ))}
+                </div>
               )}
-            </button>
-            {startStatus === "started" && (
-              <p className="flex items-center gap-1.5 text-sm font-medium text-brand-600">
-                <CheckIcon /> Trip started successfully.
-              </p>
-            )}
-            {startStatus === "failed" && (
-              <p className="flex items-center gap-1.5 text-sm font-medium text-danger-600">
-                <XIcon /> Could not start trip.
-              </p>
-            )}
-          </div>
-        </form>
-
-        <div className="rounded-xl bg-surface-card p-6 shadow-sm ring-1 ring-border-default animate-fade-in-up">
-          <h2 className="mb-4 text-base font-bold text-text-primary">Active vehicles</h2>
-          {activeTrips.length === 0 ? (
-            <EmptyState icon={<VehicleIcon />} text="No active trips." hint="Start a trip to see vehicle status here." />
-          ) : (
-            <div className="grid gap-3">
-              {activeTrips.map((trip) => (
-                <ActiveVehicleCard key={trip.id} trip={trip} gps={latestGpsByVehicle[trip.vehicleId]} />
-              ))}
             </div>
-          )}
+            <Panel title="SOS alerts" icon={<SosIcon />}>
+              {dashboard.sosAlerts.length === 0 ? (
+                <EmptyState icon={<SosIcon />} text="No SOS alerts triggered." hint="All vehicles are operating normally." />
+              ) : (
+                <div className="grid gap-2.5">
+                  {dashboard.sosAlerts.map((alert) => (
+                    <SosAlertCard key={alert.id} alert={alert} />
+                  ))}
+                </div>
+              )}
+            </Panel>
+          </section>
         </div>
-      </section>
 
-      <section className="grid gap-5 lg:grid-cols-2">
-        <Panel title="Boarded passengers" icon={<PersonIcon />}>
-          {dashboard.passengers.length === 0 ? (
-            <EmptyState icon={<PersonIcon />} text="No passengers registered." hint="Passengers will appear here once they board a vehicle." />
-          ) : (
-            <div className="grid gap-2.5">
-              {dashboard.passengers.map((passenger) => (
-                <PassengerCard key={passenger.id} passenger={passenger} />
-              ))}
+        <div className="flex flex-col gap-5">
+          <form
+            onSubmit={startTrip}
+            className="rounded-xl bg-surface-card p-6 shadow-sm ring-1 ring-border-default"
+          >
+            <div className="mb-5">
+              <h2 className="text-base font-bold text-text-primary">Start trip</h2>
+              <p className="mt-1 text-sm leading-relaxed text-text-secondary">
+                Assign boarded passengers to an active trip for a vehicle.
+              </p>
             </div>
-          )}
-        </Panel>
-        <Panel title="SOS alerts" icon={<SosIcon />}>
-          {dashboard.sosAlerts.length === 0 ? (
-            <EmptyState icon={<SosIcon />} text="No SOS alerts triggered." hint="All vehicles are operating normally." />
-          ) : (
-            <div className="grid gap-2.5">
-              {dashboard.sosAlerts.map((alert) => (
-                <SosAlertCard key={alert.id} alert={alert} />
-              ))}
+            <div className="grid gap-4">
+              <label className="grid gap-1.5 text-sm font-semibold text-text-primary">
+                Vehicle ID
+                <input
+                  className="rounded-lg border border-border-default px-4 py-2.5 text-sm font-normal text-text-primary outline-none ring-brand-200 transition-all duration-150 placeholder:text-text-muted focus:border-brand-500 focus:ring-2"
+                  onChange={(event) => setVehicleId(event.target.value)}
+                  value={vehicleId}
+                  placeholder="e.g. VH-001"
+                />
+              </label>
+              <button
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-all duration-150 hover:bg-brand-600 hover:shadow active:scale-[0.98] disabled:cursor-wait disabled:opacity-60 disabled:hover:bg-brand-500"
+                disabled={startStatus === "starting"}
+                type="submit"
+              >
+                {startStatus === "starting" ? (
+                  <>
+                    <Spinner />
+                    Starting...
+                  </>
+                ) : (
+                  "START TRIP"
+                )}
+              </button>
+              {startStatus === "started" && (
+                <p className="flex items-center gap-1.5 text-sm font-medium text-brand-600">
+                  <CheckIcon /> Trip started successfully.
+                </p>
+              )}
+              {startStatus === "failed" && (
+                <p className="flex items-center gap-1.5 text-sm font-medium text-danger-600">
+                  <XIcon /> Could not start trip.
+                </p>
+              )}
             </div>
-          )}
-        </Panel>
-      </section>
+          </form>
+
+          <div className="flex-1">
+            <Panel title="Boarded passengers" icon={<PersonIcon />}>
+              {dashboard.passengers.length === 0 ? (
+                <EmptyState icon={<PersonIcon />} text="No passengers registered." hint="Passengers will appear here once they board a vehicle." />
+              ) : (
+                <div className="grid gap-2.5">
+                  {dashboard.passengers.map((passenger) => (
+                    <PassengerCard key={passenger.id} passenger={passenger} />
+                  ))}
+                </div>
+              )}
+            </Panel>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
