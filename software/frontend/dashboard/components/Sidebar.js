@@ -20,7 +20,7 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-screen w-56 flex-shrink-0 flex-col border-r border-border-default bg-surface-card">
+    <aside className="flex min-h-screen w-56 flex-shrink-0 flex-col border-r border-border-default bg-surface-card">
       <div className="flex items-center gap-3 border-b border-border-default px-5 py-5">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-white">
           <SvgLogo />
