@@ -51,6 +51,8 @@ Relational tables:
 | `vehicle_id` | Vehicle assigned to this trip. |
 | `status` | Trip state, such as `active` or `completed`. |
 | `start_time` | Timestamp when the operator started the trip. |
+| `origin` | Departure state selected when starting the trip. |
+| `destination` | Arrival state selected when starting the trip. |
 | `completed_at` | Timestamp when the trip is completed. |
 
 ## gps_logs
