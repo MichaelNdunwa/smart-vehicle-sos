@@ -20,10 +20,10 @@ try {
   const trips = await client.query(`
     INSERT INTO trips (vehicle_id, status, start_time, origin, destination)
     VALUES
-      ('VH-001', 'active',   now() - interval '2 hours',  'Lagos',           'Abuja'),
-      ('VH-002', 'active',   now() - interval '1 hour',   'Port Harcourt',   'Enugu'),
-      ('VH-003', 'completed',now() - interval '1 day',    'Abuja',           'Kano'),
-      ('VH-004', 'active',   now() - interval '30 minutes','Ibadan',          'Lagos')
+      ('VH-001', 'active',   now() - interval '2 hours',  'Lagos',           'FCT (Abuja)'),
+      ('VH-002', 'active',   now() - interval '1 hour',   'Rivers',          'Enugu'),
+      ('VH-003', 'completed',now() - interval '1 day',    'FCT (Abuja)',     'Kano'),
+      ('VH-004', 'active',   now() - interval '30 minutes','Oyo',             'Lagos')
     RETURNING id, vehicle_id
   `);
 
