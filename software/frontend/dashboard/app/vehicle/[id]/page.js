@@ -71,6 +71,9 @@ export default function VehicleDetailPage() {
             lng={gps?.lng}
             timestamp={gps?.timestamp}
             connected={connected}
+            origin={trip?.origin}
+            destination={trip?.destination}
+            isActive={isActive}
           />
         </div>
 
@@ -141,6 +144,22 @@ export default function VehicleDetailPage() {
                 <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Trip ID</p>
                 <p className="mt-0.5 font-mono text-xs font-medium text-text-primary">
                   {trip?.id ?? "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                  Origin
+                </p>
+                <p className="mt-0.5 font-medium text-text-primary">
+                  {trip?.origin ?? "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                  Destination
+                </p>
+                <p className="mt-0.5 font-medium text-text-primary">
+                  {trip?.destination ?? "—"}
                 </p>
               </div>
               <div>
