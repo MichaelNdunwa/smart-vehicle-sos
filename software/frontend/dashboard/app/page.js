@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useDashboard } from "../components/useDashboard";
 import OverviewMap from "../components/OverviewMap";
+import PaginatedPanel from "../components/PaginatedPanel";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -53,29 +54,14 @@ export default function OverviewPage() {
           </section>
 
           <section className="grid gap-5 lg:grid-cols-2">
-            <div className="rounded-xl bg-surface-card p-6 shadow-sm ring-1 ring-border-default">
-              <h2 className="mb-4 text-base font-bold text-text-primary">Active vehicles</h2>
-              {activeTrips.length === 0 ? (
-                <EmptyState icon={<VehicleIcon />} text="No active trips." hint="Start a trip to see vehicle status here." />
-              ) : (
-                <div className="grid gap-3">
-                  {activeTrips.map((trip) => (
-                    <ActiveVehicleCard key={trip.id} trip={trip} gps={latestGpsByVehicle[trip.vehicleId]} />
-                  ))}
-                </div>
-              )}
-            </div>
-            <Panel title="SOS alerts" icon={<SosIcon />}>
-              {dashboard.sosAlerts.length === 0 ? (
-                <EmptyState icon={<SosIcon />} text="No SOS alerts triggered." hint="All vehicles are operating normally." />
-              ) : (
-                <div className="grid gap-2.5">
-                  {dashboard.sosAlerts.map((alert) => (
-                    <SosAlertCard key={alert.id} alert={alert} />
-                  ))}
-                </div>
-              )}
-            </Panel>
+            <PaginatedPanel title="Active vehicles" icon={<VehicleIcon />} items={activeTrips} pageSize={5}
+              renderItem={(trip) => <ActiveVehicleCard key={trip.id} trip={trip} gps={latestGpsByVehicle[trip.vehicleId]} />}
+              emptyState={<EmptyState icon={<VehicleIcon />} text="No active trips." hint="Start a trip to see vehicle status here." />}
+            />
+            <PaginatedPanel title="SOS alerts" icon={<SosIcon />} items={dashboard.sosAlerts} pageSize={5}
+              renderItem={(alert) => <SosAlertCard key={alert.id} alert={alert} />}
+              emptyState={<EmptyState icon={<SosIcon />} text="No SOS alerts triggered." hint="All vehicles are operating normally." />}
+            />
           </section>
         </div>
 
@@ -128,17 +114,10 @@ export default function OverviewPage() {
           </form>
 
           <div className="flex-1">
-            <Panel title="Boarded passengers" icon={<PersonIcon />}>
-              {dashboard.passengers.length === 0 ? (
-                <EmptyState icon={<PersonIcon />} text="No passengers registered." hint="Passengers will appear here once they board a vehicle." />
-              ) : (
-                <div className="grid gap-2.5">
-                  {dashboard.passengers.map((passenger) => (
-                    <PassengerCard key={passenger.id} passenger={passenger} />
-                  ))}
-                </div>
-              )}
-            </Panel>
+            <PaginatedPanel title="Boarded passengers" icon={<PersonIcon />} items={dashboard.passengers} pageSize={5}
+              renderItem={(passenger) => <PassengerCard key={passenger.id} passenger={passenger} />}
+              emptyState={<EmptyState icon={<PersonIcon />} text="No passengers registered." hint="Passengers will appear here once they board a vehicle." />}
+            />
           </div>
         </div>
       </div>
