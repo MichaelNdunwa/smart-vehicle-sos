@@ -131,14 +131,14 @@ export default function PassengerPage() {
   if (pageLoading) {
     return (
       <main className="min-h-screen bg-gradient-to-b from-[#f2f7f4] to-[#e4ede7] flex items-center justify-center px-4">
-        <div className="flex flex-col items-center gap-8">
+        <div className="flex flex-col items-center gap-6 max-sm:gap-5">
           <div className="relative flex items-center justify-center">
-            <span className="absolute h-28 w-28 rounded-full bg-[#c71f37]/10 animate-ripple" />
-            <span className="absolute h-28 w-28 rounded-full bg-[#c71f37]/10 animate-ripple [animation-delay:0.4s]" />
-            <span className="absolute h-28 w-28 rounded-full bg-[#c71f37]/10 animate-ripple [animation-delay:0.8s]" />
-            <span className="absolute h-28 w-28 rounded-full bg-[#c71f37]/10 animate-ripple [animation-delay:1.2s]" />
-            <span className="relative flex h-20 w-20 items-center justify-center rounded-full bg-[#c71f37] shadow-[0_0_32px_-4px_rgba(199,31,55,0.35)] animate-heartbeat">
-              <svg className="h-9 w-9 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <span className="absolute h-28 w-28 rounded-full bg-[#c71f37]/10 animate-ripple max-sm:h-24 max-sm:w-24" />
+            <span className="absolute h-28 w-28 rounded-full bg-[#c71f37]/10 animate-ripple [animation-delay:0.4s] max-sm:h-24 max-sm:w-24" />
+            <span className="absolute h-28 w-28 rounded-full bg-[#c71f37]/10 animate-ripple [animation-delay:0.8s] max-sm:h-24 max-sm:w-24" />
+            <span className="absolute h-28 w-28 rounded-full bg-[#c71f37]/10 animate-ripple [animation-delay:1.2s] max-sm:h-24 max-sm:w-24" />
+            <span className="relative flex h-20 w-20 items-center justify-center rounded-full bg-[#c71f37] shadow-[0_0_32px_-4px_rgba(199,31,55,0.35)] animate-heartbeat max-sm:h-16 max-sm:w-16">
+              <svg className="h-9 w-9 text-white max-sm:h-7 max-sm:w-7" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636a9 9 0 11-12.728 0" />
               </svg>
             </span>
@@ -161,16 +161,16 @@ export default function PassengerPage() {
           <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
             <span className="h-72 w-72 rounded-full bg-[#1a6d3e]/5 animate-ripple" style={{ animationDuration: "3s" }} />
           </div>
-          <div className="relative rounded-2xl border border-white/60 bg-white/95 px-8 py-10 shadow-[0_24px_64px_-16px_rgba(23,33,28,0.12)] backdrop-blur-sm text-center">
-            <div className="flex justify-center mb-6">
-              <span className="flex h-20 w-20 items-center justify-center rounded-full bg-[#1a6d3e] animate-scale-bounce shadow-[0_0_32px_-4px_rgba(26,109,62,0.3)]">
-                <svg className="h-9 w-9 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+          <div className="relative rounded-2xl border border-white/60 bg-white/95 px-6 py-8 shadow-[0_24px_64px_-16px_rgba(23,33,28,0.12)] backdrop-blur-sm text-center md:px-8 md:py-10">
+            <div className="flex justify-center mb-5 md:mb-6">
+              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[#1a6d3e] animate-scale-bounce shadow-[0_0_32px_-4px_rgba(26,109,62,0.3)] md:h-20 md:w-20">
+                <svg className="h-7 w-7 text-white md:h-9 md:w-9" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               </span>
             </div>
 
-            <h2 className="text-2xl font-bold text-[#17211c]">Registered!</h2>
+            <h2 className="text-xl font-bold text-[#17211c] md:text-2xl">Registered!</h2>
             <p className="mt-1.5 text-sm text-[#5f6a72]">
               Passenger boarding confirmed.
             </p>
@@ -221,8 +221,8 @@ export default function PassengerPage() {
         showContent ? "opacity-100" : "opacity-0"
       }`}
     >
-      <div className="w-full max-w-[464px] animate-fade-in-up">
-        <div className="rounded-2xl border border-white/60 bg-white/95 px-8 py-9 shadow-[0_24px_64px_-16px_rgba(23,33,28,0.12)] backdrop-blur-sm">
+        <div className="w-full max-w-[464px] animate-fade-in-up">
+        <div className="rounded-2xl border border-white/60 bg-white/95 px-5 py-8 shadow-[0_24px_64px_-16px_rgba(23,33,28,0.12)] backdrop-blur-sm md:px-8 md:py-9">
 
           <div className="flex items-center gap-2.5">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#c71f37]">
@@ -235,7 +235,7 @@ export default function PassengerPage() {
             </span>
           </div>
 
-          <h1 className="mt-4 text-[26px] font-bold leading-tight text-[#17211c]">
+          <h1 className="mt-4 text-xl font-bold leading-tight text-[#17211c] md:text-[26px]">
             Register passenger
           </h1>
           <p className="mt-1.5 text-sm leading-relaxed text-[#5f6a72]">
