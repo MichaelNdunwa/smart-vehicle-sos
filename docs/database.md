@@ -75,3 +75,13 @@ Relational tables:
 | `triggered_at` | Time the SOS event was received. |
 | `coordinates` | Last known or submitted GPS coordinates. |
 | `message` | SOS message sent with the alert. |
+
+## hardware_logs
+
+| Column | Purpose |
+| --- | --- |
+| `id` | Primary key. |
+| `vehicle_id` | Vehicle that generated the log. |
+| `level` | Log severity: `INFO`, `WARN`, or `ERROR`. |
+| `message` | Log message text. |
+| `created_at` | Timestamp when the log was created. |
