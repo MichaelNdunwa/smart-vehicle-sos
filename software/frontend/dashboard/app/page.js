@@ -48,16 +48,16 @@ export default function OverviewPage() {
   }
 
   return (
-    <div className="px-6 pb-10 pt-6">
+    <div className="px-4 pb-10 pt-4 md:px-6 md:pt-6">
       <header className="mb-6 flex items-center justify-between gap-5 max-sm:grid max-sm:items-start">
-        <div className="animate-fade-in-up">
-          <div className="mb-1 flex items-center gap-2.5">
-            <span className="h-1 w-8 rounded-full bg-brand-500" />
-            <span className="text-xs font-semibold uppercase tracking-widest text-brand-500">Smart Vehicle SOS</span>
+          <div className="animate-fade-in-up">
+            <div className="mb-1 flex items-center gap-2.5">
+              <span className="h-1 w-8 rounded-full bg-brand-500" />
+              <span className="text-xs font-semibold uppercase tracking-widest text-brand-500">Smart Vehicle SOS</span>
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-text-primary md:text-3xl">Dashboard</h1>
+            <p className="mt-1 text-sm text-text-secondary max-sm:hidden">Monitor all vehicles, passengers, and alerts in real-time.</p>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary md:text-3xl">Dashboard</h1>
-          <p className="mt-1 text-sm text-text-secondary">Monitor all vehicles, passengers, and alerts in real-time.</p>
-        </div>
         <StatusBadge connected={connected} />
       </header>
 
@@ -90,7 +90,7 @@ export default function OverviewPage() {
         <div className="flex flex-col gap-5">
           <form
             onSubmit={startTrip}
-            className="rounded-xl bg-surface-card p-6 shadow-sm ring-1 ring-border-default"
+            className="rounded-xl bg-surface-card p-6 shadow-sm ring-1 ring-border-default max-sm:p-4"
           >
             <div className="mb-5">
               <h2 className="text-base font-bold text-text-primary">Start trip</h2>
@@ -121,7 +121,7 @@ export default function OverviewPage() {
                     setOrigin(destination);
                     setDestination(temp);
                   }}
-                  className="mx-auto -my-1 inline-flex h-7 w-7 items-center justify-center rounded-lg border border-border-default bg-surface-card text-text-muted transition-all duration-150 hover:border-brand-300 hover:text-brand-500"
+                  className="mx-auto -my-1 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border-default bg-surface-card text-text-muted transition-all duration-150 hover:border-brand-300 hover:text-brand-500"
                   title="Swap origin and destination"
                 >
                   <SwapIcon />

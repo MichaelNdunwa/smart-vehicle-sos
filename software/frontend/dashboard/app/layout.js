@@ -17,7 +17,7 @@ export default function RootLayout({ children }) {
     <html lang="en" className={inter.variable}>
       <body className="flex min-h-screen antialiased">
         <Sidebar />
-        <main className="flex-1 bg-surface-page">{children}</main>
+        <main className="flex-1 bg-surface-page max-md:pb-16">{children}</main>
       </body>
     </html>
   );

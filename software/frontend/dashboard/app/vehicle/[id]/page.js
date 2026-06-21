@@ -23,7 +23,7 @@ export default function VehicleDetailPage() {
   const isActive = !!trip;
 
   return (
-    <div className="px-6 pb-10 pt-6">
+    <div className="px-4 pb-10 pt-4 md:px-6 md:pt-6">
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div className="animate-fade-in-up">
           <div className="mb-1 flex items-center gap-2.5">
@@ -64,7 +64,7 @@ export default function VehicleDetailPage() {
       </header>
 
       <div className="mb-6 grid gap-5 lg:grid-cols-[2fr_1fr]">
-        <div className="min-h-[500px]">
+        <div className="min-h-[500px] max-sm:min-h-[300px]">
           <h2 className="mb-3 text-base font-bold text-text-primary">Live tracking</h2>
           <VehicleMap
             vehicleId={vehicleId}
@@ -84,7 +84,7 @@ export default function VehicleDetailPage() {
               <ActivityIcon />
               Vehicle metrics
             </h2>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-4 max-sm:grid-cols-1">
               <div className="rounded-lg bg-brand-50 p-4 text-center">
                 <p className="text-xs font-semibold uppercase tracking-wider text-brand-600">
                   Passengers
@@ -123,7 +123,7 @@ export default function VehicleDetailPage() {
               <InfoIcon />
               Vehicle info
             </h2>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-4 text-sm max-sm:grid-cols-1">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Vehicle ID</p>
                 <p className="mt-0.5 font-medium text-text-primary">{vehicleId}</p>
@@ -233,13 +233,13 @@ export default function VehicleDetailPage() {
       <section className="mt-5">
         <PaginatedPanel title={`Hardware logs for ${vehicleId}`} icon={<CpuIcon />} items={vehicleHardwareLogs} pageSize={8}
           renderItem={(log) => (
-            <div key={log.id} className="flex items-start gap-3 rounded-lg border border-border-default p-3">
+            <div key={log.id} className="flex items-start gap-3 rounded-lg border border-border-default p-3 max-sm:flex-wrap max-sm:gap-2">
               <span className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${
                 log.level === "ERROR" ? "bg-danger-500" :
                 log.level === "WARN" ? "bg-yellow-400" :
                 "bg-green-500"
               }`} />
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 max-sm:w-full max-sm:order-3">
                 <p className="text-sm text-text-primary">{log.message}</p>
                 <time className="mt-0.5 block text-xs text-text-muted">
                   {new Date(log.createdAt).toLocaleString()}

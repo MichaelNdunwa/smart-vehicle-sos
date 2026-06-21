@@ -13,7 +13,7 @@ export default function PaginatedPanel({ title, icon, items, pageSize = 5, rende
   }, [totalPages, page]);
 
   return (
-    <section className="rounded-xl bg-surface-card p-6 shadow-sm ring-1 ring-border-default">
+    <section className="rounded-xl bg-surface-card p-6 shadow-sm ring-1 ring-border-default max-sm:p-4">
       <div className="mb-4 flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-base font-bold text-text-primary">
           {icon && <span className="text-text-muted">{icon}</span>}
@@ -23,10 +23,10 @@ export default function PaginatedPanel({ title, icon, items, pageSize = 5, rende
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page <= 1}
-            className="flex h-6 w-6 items-center justify-center rounded-md border border-border-default text-text-secondary transition hover:bg-surface-muted hover:text-text-primary disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-text-secondary"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-border-default text-text-secondary transition hover:bg-surface-muted hover:text-text-primary disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-text-secondary"
             aria-label="Previous page"
           >
-            ‹
+            <span className="text-lg leading-none">‹</span>
           </button>
           <span className="min-w-[2.5rem] text-center tabular-nums text-xs font-semibold text-text-secondary">
             {page}/{totalPages}
@@ -34,10 +34,10 @@ export default function PaginatedPanel({ title, icon, items, pageSize = 5, rende
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages}
-            className="flex h-6 w-6 items-center justify-center rounded-md border border-border-default text-text-secondary transition hover:bg-surface-muted hover:text-text-primary disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-text-secondary"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-border-default text-text-secondary transition hover:bg-surface-muted hover:text-text-primary disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-text-secondary"
             aria-label="Next page"
           >
-            ›
+            <span className="text-lg leading-none">›</span>
           </button>
         </span>
       </div>

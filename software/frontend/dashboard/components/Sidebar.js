@@ -20,8 +20,8 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex min-h-screen w-56 flex-shrink-0 flex-col border-r border-border-default bg-surface-card">
-      <div className="flex items-center gap-3 border-b border-border-default px-5 py-5">
+    <aside className="flex min-h-screen w-56 flex-shrink-0 flex-col border-r border-border-default bg-surface-card max-md:fixed max-md:bottom-0 max-md:left-0 max-md:z-50 max-md:flex max-md:w-full max-md:min-h-0 max-md:flex-row max-md:items-center max-md:border-t max-md:border-r-0 max-md:px-0 max-md:py-0">
+      <div className="flex items-center gap-3 border-b border-border-default px-5 py-5 max-md:hidden">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-white">
           <SvgLogo />
         </span>
@@ -31,8 +31,8 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-4">
-        <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">Navigation</p>
+      <nav className="flex-1 space-y-1 px-3 py-4 max-md:flex max-md:flex-row max-md:space-y-0 max-md:px-0 max-md:py-0 max-md:w-full max-md:justify-around max-md:items-stretch">
+        <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wider text-text-muted max-md:hidden">Navigation</p>
         {navItems.map((item) => {
           const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith("/vehicle");
           return (
@@ -43,6 +43,8 @@ export default function Sidebar() {
                 isActive
                   ? "bg-brand-50 text-brand-600"
                   : "text-text-secondary hover:bg-surface-muted hover:text-text-primary"
+              } max-md:flex max-md:flex-1 max-md:flex-col max-md:items-center max-md:justify-center max-md:gap-0.5 max-md:rounded-none max-md:px-2 max-md:py-2 max-md:text-[10px] max-md:font-semibold max-md:uppercase max-md:tracking-wider ${
+                isActive ? "max-md:bg-transparent max-md:text-brand-600 max-md:border-t-2 max-md:border-brand-500" : "max-md:bg-transparent max-md:text-text-muted max-md:border-t-2 max-md:border-transparent"
               }`}
             >
               <span className="flex-shrink-0">{item.icon({})}</span>
@@ -52,7 +54,7 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t border-border-default px-5 py-4">
+      <div className="border-t border-border-default px-5 py-4 max-md:hidden">
         <p className="text-xs text-text-muted">Smart Vehicle SOS v0.1</p>
       </div>
     </aside>
