@@ -10,7 +10,8 @@ const initialState = {
   contacts: [],
   trips: [],
   gpsLogs: [],
-  sosAlerts: []
+  sosAlerts: [],
+  hardwareLogs: []
 };
 
 export function useDashboard() {
@@ -28,6 +29,9 @@ export function useDashboard() {
     socket.on("connect", () => setConnected(true));
     socket.on("disconnect", () => setConnected(false));
     socket.on("dashboard:sync", (state) => setDashboard({ ...initialState, ...state }));
+    socket.on("hardware:log", (log) => {
+      setDashboard((prev) => ({ ...prev, hardwareLogs: [log, ...prev.hardwareLogs] }));
+    });
 
     return () => socket.disconnect();
   }, []);

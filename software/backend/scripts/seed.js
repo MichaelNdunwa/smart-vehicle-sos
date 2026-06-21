@@ -98,6 +98,26 @@ try {
       ($2, 'VH-001', '{"lat": 7.20, "lng": 4.50}', 'SOS! Bus VH-001 in danger.', now() - interval '1 hour')
   `, [tripMap["VH-003"], tripMap["VH-001"]]);
 
+  // ── Hardware Logs ──────────────────────────────────────────────────────────
+  await client.query(`
+    INSERT INTO hardware_logs (vehicle_id, level, message, created_at)
+    VALUES
+      ('VH-001', 'INFO',  'System boot complete. Firmware v2.1.0',                       now() - interval '2 hours'),
+      ('VH-001', 'INFO',  'GSM registered. Signal: -67 dBm',                             now() - interval '1 hour 55 minutes'),
+      ('VH-001', 'INFO',  'GPS fix acquired. 8 satellites',                               now() - interval '1 hour 50 minutes'),
+      ('VH-001', 'WARN',  'GPS signal weak. 3 satellites',                                now() - interval '10 minutes'),
+      ('VH-001', 'INFO',  'GPS fix reacquired. 7 satellites',                             now() - interval '8 minutes'),
+      ('VH-002', 'INFO',  'System boot complete. Firmware v2.1.0',                        now() - interval '1 hour'),
+      ('VH-002', 'INFO',  'GSM registered. Signal: -71 dBm',                              now() - interval '55 minutes'),
+      ('VH-002', 'INFO',  'GPS fix acquired. 9 satellites',                               now() - interval '50 minutes'),
+      ('VH-002', 'ERROR', 'GSM connection dropped. Reconnecting...',                       now() - interval '25 minutes'),
+      ('VH-002', 'INFO',  'GSM reconnected. Signal: -65 dBm',                             now() - interval '24 minutes'),
+      ('VH-004', 'INFO',  'System boot complete. Firmware v2.1.0',                        now() - interval '30 minutes'),
+      ('VH-004', 'INFO',  'GSM registered. Signal: -73 dBm',                              now() - interval '25 minutes'),
+      ('VH-004', 'WARN',  'GPS fix acquired. 5 satellites (low)',                         now() - interval '20 minutes'),
+      ('VH-004', 'INFO',  'Trip started. Origin: Oyo → Lagos',                            now() - interval '25 minutes')
+  `);
+
   await client.query("COMMIT");
 
   console.log("Seed data inserted successfully.\n");
@@ -108,6 +128,7 @@ try {
     UNION ALL SELECT 'contacts', count(*) FROM contacts
     UNION ALL SELECT 'gps_logs', count(*) FROM gps_logs
     UNION ALL SELECT 'sos_alerts', count(*) FROM sos_alerts
+    UNION ALL SELECT 'hardware_logs', count(*) FROM hardware_logs
   `);
 
   for (const row of counts.rows) {
