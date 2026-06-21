@@ -19,6 +19,7 @@ export default function VehicleDetailPage() {
   const vehiclePassengers = dashboard.passengers.filter((p) => p.vehicleId === vehicleId);
   const vehicleAlerts = dashboard.sosAlerts.filter((a) => a.vehicleId === vehicleId);
   const vehicleGpsLogs = dashboard.gpsLogs.filter((g) => g.vehicleId === vehicleId);
+  const vehicleHardwareLogs = dashboard.hardwareLogs.filter((l) => l.vehicleId === vehicleId);
   const isActive = !!trip;
 
   return (
@@ -228,6 +229,34 @@ export default function VehicleDetailPage() {
           emptyState={<EmptyState icon={<SosIcon />} text={`No SOS alerts for ${vehicleId}.`} hint="All clear." />}
         />
       </section>
+
+      <section className="mt-5">
+        <PaginatedPanel title={`Hardware logs for ${vehicleId}`} icon={<CpuIcon />} items={vehicleHardwareLogs} pageSize={8}
+          renderItem={(log) => (
+            <div key={log.id} className="flex items-start gap-3 rounded-lg border border-border-default p-3">
+              <span className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${
+                log.level === "ERROR" ? "bg-danger-500" :
+                log.level === "WARN" ? "bg-yellow-400" :
+                "bg-green-500"
+              }`} />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-text-primary">{log.message}</p>
+                <time className="mt-0.5 block text-xs text-text-muted">
+                  {new Date(log.createdAt).toLocaleString()}
+                </time>
+              </div>
+              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                log.level === "ERROR" ? "bg-danger-100 text-danger-600" :
+                log.level === "WARN" ? "bg-yellow-100 text-yellow-700" :
+                "bg-green-100 text-green-700"
+              }`}>
+                {log.level}
+              </span>
+            </div>
+          )}
+          emptyState={<EmptyState icon={<CpuIcon />} text={`No hardware logs for ${vehicleId}.`} hint="Logs from the vehicle's onboard system will appear here." />}
+        />
+      </section>
     </div>
   );
 }
@@ -275,6 +304,23 @@ function ActivityIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </svg>
+  );
+}
+
+function CpuIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
+      <rect x="9" y="9" width="6" height="6" />
+      <line x1="9" y1="1" x2="9" y2="4" />
+      <line x1="15" y1="1" x2="15" y2="4" />
+      <line x1="9" y1="20" x2="9" y2="23" />
+      <line x1="15" y1="20" x2="15" y2="23" />
+      <line x1="20" y1="9" x2="23" y2="9" />
+      <line x1="20" y1="14" x2="23" y2="14" />
+      <line x1="1" y1="9" x2="4" y2="9" />
+      <line x1="1" y1="14" x2="4" y2="14" />
     </svg>
   );
 }

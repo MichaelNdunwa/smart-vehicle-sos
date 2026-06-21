@@ -62,6 +62,14 @@ const sosAlertFields = `
   message
 `;
 
+const hardwareLogFields = `
+  id::text,
+  vehicle_id AS "vehicleId",
+  level,
+  message,
+  created_at AS "createdAt"
+`;
+
 function asyncHandler(handler) {
   return async (req, res, next) => {
     try {
@@ -134,12 +142,13 @@ async function latestGpsFor(vehicleId, client = { query }) {
 }
 
 async function dashboardState() {
-  const [passengersResult, contactsResult, tripsResult, gpsLogsResult, sosAlertsResult] = await Promise.all([
+  const [passengersResult, contactsResult, tripsResult, gpsLogsResult, sosAlertsResult, hardwareLogsResult] = await Promise.all([
     query(`SELECT ${passengerFields} FROM passengers ORDER BY boarded_at DESC`),
     query(`SELECT ${contactFields} FROM contacts ORDER BY phone_number ASC`),
     query(`SELECT ${tripFields} FROM trips ORDER BY start_time DESC`),
     query(`SELECT ${gpsLogFields} FROM gps_logs ORDER BY timestamp ASC`),
-    query(`SELECT ${sosAlertFields} FROM sos_alerts ORDER BY triggered_at DESC`)
+    query(`SELECT ${sosAlertFields} FROM sos_alerts ORDER BY triggered_at DESC`),
+    query(`SELECT ${hardwareLogFields} FROM hardware_logs ORDER BY created_at DESC LIMIT 200`)
   ]);
 
   return {
@@ -147,7 +156,8 @@ async function dashboardState() {
     contacts: contactsResult.rows,
     trips: tripsResult.rows,
     gpsLogs: gpsLogsResult.rows,
-    sosAlerts: sosAlertsResult.rows
+    sosAlerts: sosAlertsResult.rows,
+    hardwareLogs: hardwareLogsResult.rows
   };
 }
 
@@ -404,6 +414,33 @@ app.post(
     await emitDashboardSync();
 
     return res.status(201).json({ sosAlert });
+  })
+);
+
+app.post(
+  "/api/logs/hardware",
+  asyncHandler(async (req, res) => {
+    const { vehicleId, level, message } = req.body;
+
+    if (!vehicleId || !message) {
+      return res.status(400).json({ error: "vehicleId and message are required" });
+    }
+
+    const logResult = await query(
+      `
+        INSERT INTO hardware_logs (vehicle_id, level, message)
+        VALUES ($1, $2, $3)
+        RETURNING ${hardwareLogFields}
+      `,
+      [vehicleId, (level ?? "INFO").toUpperCase(), message]
+    );
+    const hardwareLog = logResult.rows[0];
+
+    io.emit("hardware:log", hardwareLog);
+
+    await query(`DELETE FROM hardware_logs WHERE created_at < now() - interval '7 days'`);
+
+    return res.status(201).json({ ok: true });
   })
 );
 

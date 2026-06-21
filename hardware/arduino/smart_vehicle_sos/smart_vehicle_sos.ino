@@ -32,6 +32,7 @@ const char API_HOST[]   PROGMEM = "141.148.66.227:4000";
 const char API_TRIP[]   PROGMEM = "/api/trip/active";
 const char API_GPS[]    PROGMEM = "/api/gps/update";
 const char API_SOS[]    PROGMEM = "/api/sos/trigger";
+const char API_LOGS[]   PROGMEM = "/api/logs/hardware";
 
 // ── Shared global buffers ───────────────────────────────────
 static char statusBuf[80];
@@ -98,6 +99,8 @@ void setup() {
   clearBuffer();
 
   initGPRS();
+
+  postHardwareLog("INFO", "System boot complete");
 
   Serial.println(F("GPS acquiring lock..."));
   Serial.println(F("--------------------------"));
@@ -253,6 +256,7 @@ void initGPRS() {
 
   if (bearerOpen) {
     Serial.println(F("[GPRS] READY."));
+    postHardwareLog("INFO", "GPRS bearer open");
   } else {
     Serial.println(F("[GPRS] Failed to open bearer."));
   }
@@ -501,7 +505,12 @@ void postGPS() {
   Serial.println(F("[GPS] Posting location..."));
   bool success = httpPOST(apiGps);
   if (!panicTriggered) {
-    Serial.println(success ? F("[GPS] Posted OK.") : F("[GPS] Post failed."));
+    if (success) {
+      Serial.println(F("[GPS] Posted OK."));
+    } else {
+      Serial.println(F("[GPS] Post failed."));
+      postHardwareLog("ERROR", "GPS post failed");
+    }
   }
 }
 
@@ -515,6 +524,26 @@ void postSOS() {
   buildLocationBody(vehicleId);
   Serial.println(F("[SOS] Posting SOS event to backend..."));
   Serial.println(httpPOST(apiSos) ? F("[SOS] Backend notified OK.") : F("[SOS] Backend post failed."));
+}
+
+// ============================================================
+//  POST HARDWARE LOG
+// ============================================================
+void postHardwareLog(const char* level, const char* message) {
+  if (panicTriggered) return;
+
+  char vehicleId[8]; strcpy_P(vehicleId, VEHICLE_ID);
+  char apiLogs[20];  strcpy_P(apiLogs,   API_LOGS);
+
+  snprintf(bodyBuf, sizeof(bodyBuf),
+    "{\"vehicleId\":\"%s\",\"level\":\"%s\",\"message\":\"%s\"}",
+    vehicleId, level, message);
+
+  Serial.print(F("[LOG] "));
+  Serial.println(message);
+  bool success = httpPOST(apiLogs);
+  if (!panicTriggered && !success)
+    Serial.println(F("[LOG] Post failed."));
 }
 
 // ============================================================
@@ -589,6 +618,7 @@ void triggerPanicSMS() {
   }
 
   postSOS();
+  postHardwareLog("ERROR", "SOS triggered");
 }
 
 // ============================================================
@@ -656,6 +686,8 @@ void processGPSData() {
   bool got = readAndParseGPS();
   if (panicArmed) return;
 
+  static bool hadGpsFix = false;
+
   if (got) {
     digitalWrite(PIN_LED_RED, HIGH);
     Serial.println(F("\n>> LOCATION LOCKED"));
@@ -663,9 +695,13 @@ void processGPSData() {
     Serial.print(F("   Time (WAT): "));  Serial.println(timeBuf);
     Serial.print(F("   Maps: https://www.google.com/maps?q="));
     Serial.print(latBuf); Serial.print(','); Serial.println(lonBuf);
+    if (!hadGpsFix) postHardwareLog("INFO", "GPS fix acquired");
+    hadGpsFix = true;
   } else {
     digitalWrite(PIN_LED_RED, LOW);
     Serial.println(F("\n>> Synchronising with GPS..."));
+    if (hadGpsFix) postHardwareLog("WARN", "GPS fix lost");
+    hadGpsFix = false;
   }
   Serial.println(F("--------------------------"));
 }
@@ -809,6 +845,7 @@ void powerOffCheck() {
       digitalWrite(PIN_LED_GREEN, HIGH);
       sim808.println(F("AT+CGNSPWR=1")); delay(1000); clearBuffer();
       initGPRS();
+      postHardwareLog("WARN", "SIM808 rebooted");
       Serial.println(F("GPS engine restarted."));
       Serial.println(F("--------------------------"));
       return;

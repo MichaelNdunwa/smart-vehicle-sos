@@ -52,3 +52,14 @@ CREATE TABLE IF NOT EXISTS sos_alerts (
 
 CREATE INDEX IF NOT EXISTS sos_alerts_triggered_at_idx
   ON sos_alerts (triggered_at DESC);
+
+CREATE TABLE IF NOT EXISTS hardware_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  vehicle_id text NOT NULL,
+  level text NOT NULL DEFAULT 'INFO',
+  message text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS hardware_logs_vehicle_created_idx
+  ON hardware_logs (vehicle_id, created_at DESC);
