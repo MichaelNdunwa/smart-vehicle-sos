@@ -10,7 +10,8 @@ flowchart TD
   Button[SOS Button Held 10s] --> Arduino
   Arduino -->|SMS to contacts in memory| Contacts[Emergency Contacts]
   Arduino -->|POST /api/sos/trigger| Backend
-  Backend -->|Socket.IO sos:triggered| Dashboard
+  Arduino -->|POST /api/logs/hardware| Backend
+  Backend -->|Socket.IO sos:triggered, hardware:log| Dashboard
 ```
 
 ## Runtime Flow
@@ -20,8 +21,9 @@ flowchart TD
 3. Operator sees boarded passengers and starts a trip for a vehicle.
 4. Arduino polls the active trip endpoint every 30 seconds and stores contacts in memory.
 5. Arduino continuously posts GPS coordinates.
-6. Holding the SOS button for 10 seconds sends SMS messages through SIM808 and posts an SOS event to the backend.
-7. Backend broadcasts the SOS event to the dashboard over Socket.IO.
+6. Arduino posts hardware telemetry logs (boot, GPS fix, errors) to the backend.
+7. Holding the SOS button for 10 seconds sends SMS messages through SIM808 and posts an SOS event to the backend.
+8. Backend broadcasts SOS events and hardware logs to the dashboard over Socket.IO.
 
 ## API Endpoints
 
@@ -32,6 +34,7 @@ flowchart TD
 | GET | `/api/trip/active?vehicleId=VH-001` | Return the active trip and contacts for Arduino polling. |
 | POST | `/api/gps/update` | Store Arduino GPS coordinates. |
 | POST | `/api/sos/trigger` | Store and broadcast an SOS event. |
+| POST | `/api/logs/hardware` | Store an Arduino hardware telemetry log (INFO/WARN/ERROR). |
 
 ## Data Model
 
@@ -42,3 +45,4 @@ The scaffold currently uses in-memory arrays named after the planned tables:
 - `trips`: `vehicleId`, `status`, `startTime`
 - `gps_logs`: `vehicleId`, `lat`, `lng`, `timestamp`
 - `sos_alerts`: `tripId`, `triggeredAt`, `coordinates`
+- `hardware_logs`: `vehicleId`, `level`, `message`, `createdAt`
