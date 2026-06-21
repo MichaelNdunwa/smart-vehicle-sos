@@ -3,7 +3,7 @@ import dynamic from "next/dynamic";
 const VehicleMapInner = dynamic(() => import("./VehicleMapInner"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-[500px] items-center justify-center rounded-xl bg-surface-muted ring-1 ring-border-default">
+    <div className="flex h-[500px] items-center justify-center rounded-xl bg-surface-muted ring-1 ring-border-default max-sm:h-[300px]">
       <div className="flex items-center gap-2 text-sm text-text-muted">
         <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
