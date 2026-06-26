@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useDashboard } from "../../../components/useDashboard";
 import VehicleMap from "../../../components/VehicleMap";
@@ -18,10 +18,22 @@ export default function VehicleDetailPage() {
 
   const trip = activeTrips.find((t) => t.vehicleId === vehicleId);
   const gps = latestGpsByVehicle[vehicleId];
-  const vehiclePassengers = dashboard.passengers.filter((p) => p.vehicleId === vehicleId);
-  const vehicleAlerts = dashboard.sosAlerts.filter((a) => a.vehicleId === vehicleId);
-  const vehicleGpsLogs = dashboard.gpsLogs.filter((g) => g.vehicleId === vehicleId);
-  const vehicleHardwareLogs = dashboard.hardwareLogs.filter((l) => l.vehicleId === vehicleId);
+  const vehiclePassengers = useMemo(
+    () => dashboard.passengers.filter((p) => p.vehicleId === vehicleId),
+    [dashboard.passengers, vehicleId]
+  );
+  const vehicleAlerts = useMemo(
+    () => dashboard.sosAlerts.filter((a) => a.vehicleId === vehicleId),
+    [dashboard.sosAlerts, vehicleId]
+  );
+  const vehicleGpsLogs = useMemo(
+    () => dashboard.gpsLogs.filter((g) => g.vehicleId === vehicleId),
+    [dashboard.gpsLogs, vehicleId]
+  );
+  const vehicleHardwareLogs = useMemo(
+    () => dashboard.hardwareLogs.filter((l) => l.vehicleId === vehicleId),
+    [dashboard.hardwareLogs, vehicleId]
+  );
   const isActive = !!trip;
 
   const [coordsLocation, setCoordsLocation] = useState(null);
@@ -70,6 +82,25 @@ export default function VehicleDetailPage() {
     }
     return { level, message };
   }
+
+  if (!isActive && !gps) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
+        <span className="mb-4 text-6xl">🚏</span>
+        <h2 className="text-xl font-bold text-text-primary">No active vehicle</h2>
+        <p className="mt-2 max-w-sm text-sm text-text-secondary">
+          There are currently no active vehicles. Head over to the Dashboard tab to start a trip.
+        </p>
+        <a
+          href="/"
+          className="mt-6 inline-flex items-center gap-2 rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-all duration-150 hover:bg-brand-600"
+        >
+          Go to Dashboard
+        </a>
+      </div>
+    );
+  }
+
   return (
     <div className="px-4 pb-10 pt-4 md:px-6 md:pt-6">
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
