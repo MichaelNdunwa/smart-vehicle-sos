@@ -122,8 +122,8 @@ export default function PassengerPage() {
   }
 
   const vehicleOptions =
-    urlVehicleId && !vehicles.includes(urlVehicleId)
-      ? [urlVehicleId, ...vehicles]
+    urlVehicleId && !vehicles.some((v) => v.vehicleId === urlVehicleId)
+      ? [{ vehicleId: urlVehicleId }, ...vehicles]
       : vehicles;
 
   const locked = urlVehicleId !== "";
@@ -192,7 +192,11 @@ export default function PassengerPage() {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-center">
+            <p className="mt-5 text-sm leading-relaxed text-[#2f6b4f]">
+              You can now sit back and relax — enjoy your journey. Our system monitors the vehicle in real-time and will alert the authorities and your emergency contact instantly if anything goes wrong.
+            </p>
+
+            <div className="mt-5 flex justify-center">
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#c71f37]/10 animate-heartbeat">
                 <svg className="h-5 w-5 text-[#c71f37]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636a9 9 0 11-12.728 0" />
@@ -300,8 +304,10 @@ export default function PassengerPage() {
                         </option>
                       )}
                       {vehicleOptions.map((v) => (
-                        <option key={v} value={v}>
-                          {v}
+                        <option key={v.vehicleId} value={v.vehicleId}>
+                          {v.origin && v.destination
+                            ? `${v.vehicleId}: ${v.origin} → ${v.destination}`
+                            : v.vehicleId}
                         </option>
                       ))}
                     </select>
@@ -427,6 +433,15 @@ export default function PassengerPage() {
                 </>
               )}
             </button>
+
+            <div className="flex items-start gap-2.5 rounded-xl border border-[#d4e5db] bg-[#f0f8f4] px-4 py-3 text-xs leading-relaxed text-[#2f6b4f]">
+              <svg className="mt-0.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>
+                The vehicle will notify the security agency and your emergency contact at the exact point of emergency.
+              </span>
+            </div>
 
             {status === "failed" && (
               <div className="animate-slide-down flex items-center gap-2.5 rounded-xl border border-[#fbd5d9] bg-[#fff8f9] px-4 py-3 text-sm text-[#b91c30]">

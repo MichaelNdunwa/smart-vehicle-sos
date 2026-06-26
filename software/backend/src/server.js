@@ -210,9 +210,22 @@ app.get(
   "/api/vehicles",
   asyncHandler(async (_req, res) => {
     const result = await query(
-      `SELECT DISTINCT vehicle_id AS "vehicleId" FROM trips ORDER BY vehicle_id ASC`
+      `SELECT DISTINCT
+        v.vehicle_id AS "vehicleId",
+        t.origin,
+        t.destination
+      FROM (
+        SELECT DISTINCT vehicle_id FROM trips
+      ) v
+      LEFT JOIN LATERAL (
+        SELECT origin, destination FROM trips
+        WHERE vehicle_id = v.vehicle_id AND status = 'active'
+        ORDER BY start_time DESC
+        LIMIT 1
+      ) t ON true
+      ORDER BY v.vehicle_id ASC`
     );
-    res.json({ vehicles: result.rows.map((r) => r.vehicleId) });
+    res.json({ vehicles: result.rows });
   })
 );
 
