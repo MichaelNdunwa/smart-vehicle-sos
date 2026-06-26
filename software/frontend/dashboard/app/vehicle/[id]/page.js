@@ -1,18 +1,12 @@
 "use client";
 
-<<<<<<< HEAD
-=======
 import { useEffect, useState } from "react";
->>>>>>> staging
 import { useParams } from "next/navigation";
 import { useDashboard } from "../../../components/useDashboard";
 import VehicleMap from "../../../components/VehicleMap";
 import VehicleSelector from "../../../components/VehicleSelector";
 import PaginatedPanel from "../../../components/PaginatedPanel";
-<<<<<<< HEAD
-=======
 import { reverseGeocode } from "../../../utils/reverseGeocode";
->>>>>>> staging
 
 export default function VehicleDetailPage() {
   const params = useParams();
@@ -30,8 +24,6 @@ export default function VehicleDetailPage() {
   const vehicleHardwareLogs = dashboard.hardwareLogs.filter((l) => l.vehicleId === vehicleId);
   const isActive = !!trip;
 
-<<<<<<< HEAD
-=======
   const [coordsLocation, setCoordsLocation] = useState(null);
   const [alertLocations, setAlertLocations] = useState({});
 
@@ -78,8 +70,6 @@ export default function VehicleDetailPage() {
     }
     return { level, message };
   }
-
->>>>>>> staging
   return (
     <div className="px-4 pb-10 pt-4 md:px-6 md:pt-6">
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -91,11 +81,6 @@ export default function VehicleDetailPage() {
             </span>
           </div>
           <div className="flex items-center gap-4">
-<<<<<<< HEAD
-            <h1 className="text-2xl font-bold tracking-tight text-text-primary md:text-3xl">
-              {vehicleId}
-            </h1>
-=======
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-text-primary md:text-3xl">
                 {vehicleId}
@@ -106,7 +91,6 @@ export default function VehicleDetailPage() {
                 </p>
               )}
             </div>
->>>>>>> staging
             {isActive && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-brand-600">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse-dot" />
@@ -240,11 +224,7 @@ export default function VehicleDetailPage() {
                 </p>
                 <p className="mt-0.5 font-mono text-xs font-medium text-text-primary">
                   {gps
-<<<<<<< HEAD
-                    ? `${Number(gps.lat).toFixed(4)}, ${Number(gps.lng).toFixed(4)}`
-=======
                     ? `${Number(gps.lat).toFixed(4)}, ${Number(gps.lng).toFixed(4)}${coordsLocation ? ` (${coordsLocation})` : ""}`
->>>>>>> staging
                     : "—"}
                 </p>
               </div>
@@ -297,10 +277,7 @@ export default function VehicleDetailPage() {
               </div>
               <div className="mt-3 grid gap-1 text-xs text-text-secondary">
                 <p>Coordinates: <span className="font-mono text-text-primary">{alert.coordinates.lat ?? "unknown"}, {alert.coordinates.lng ?? "unknown"}</span></p>
-<<<<<<< HEAD
-=======
                 {alertLocations[alert.id] && <p>Location: <span className="font-medium text-text-primary">{alertLocations[alert.id]}</span></p>}
->>>>>>> staging
                 <time dateTime={alert.triggeredAt}>{new Date(alert.triggeredAt).toLocaleString()}</time>
               </div>
             </article>
@@ -311,30 +288,6 @@ export default function VehicleDetailPage() {
 
       <section className="mt-5">
         <PaginatedPanel title={`Hardware logs for ${vehicleId}`} icon={<CpuIcon />} items={vehicleHardwareLogs} pageSize={8}
-<<<<<<< HEAD
-          renderItem={(log) => (
-            <div key={log.id} className="flex items-start gap-3 rounded-lg border border-border-default p-3 max-sm:flex-wrap max-sm:gap-2">
-              <span className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${
-                log.level === "ERROR" ? "bg-danger-500" :
-                log.level === "WARN" ? "bg-yellow-400" :
-                "bg-green-500"
-              }`} />
-              <div className="min-w-0 flex-1 max-sm:w-full max-sm:order-3">
-                <p className="text-sm text-text-primary">{log.message}</p>
-                <time className="mt-0.5 block text-xs text-text-muted">
-                  {new Date(log.createdAt).toLocaleString()}
-                </time>
-              </div>
-              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                log.level === "ERROR" ? "bg-danger-100 text-danger-600" :
-                log.level === "WARN" ? "bg-yellow-100 text-yellow-700" :
-                "bg-green-100 text-green-700"
-              }`}>
-                {log.level}
-              </span>
-            </div>
-          )}
-=======
           renderItem={(log) => {
             const { level: displayLevel, message: displayMessage } = translateLog(log.level, log.message);
             const isUrgent = displayLevel === "URGENT";
@@ -363,7 +316,6 @@ export default function VehicleDetailPage() {
               </div>
             );
           }}
->>>>>>> staging
           emptyState={<EmptyState icon={<CpuIcon />} text={`No hardware logs for ${vehicleId}.`} hint="Logs from the vehicle's onboard system will appear here." />}
         />
       </section>
