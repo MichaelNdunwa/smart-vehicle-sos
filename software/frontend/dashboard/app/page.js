@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDashboard } from "../components/useDashboard";
 import OverviewMap from "../components/OverviewMap";
 import PaginatedPanel from "../components/PaginatedPanel";
 import NIGERIAN_STATES from "../data/nigerianStates";
+import { reverseGeocode } from "../utils/reverseGeocode";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -15,6 +16,20 @@ export default function OverviewPage() {
   const [destination, setDestination] = useState("");
   const [startStatus, setStartStatus] = useState("idle");
   const [tripError, setTripError] = useState("");
+  const [alertLocations, setAlertLocations] = useState({});
+
+  useEffect(() => {
+    Promise.all(
+      dashboard.sosAlerts.map(async (alert) => {
+        const { lat, lng } = alert.coordinates;
+        if (lat != null && lng != null) {
+          const name = await reverseGeocode(lat, lng);
+          return [alert.id, name];
+        }
+        return [alert.id, null];
+      })
+    ).then((entries) => setAlertLocations(Object.fromEntries(entries)));
+  }, [dashboard.sosAlerts]);
 
   async function startTrip(event) {
     event.preventDefault();
@@ -81,7 +96,7 @@ export default function OverviewPage() {
               emptyState={<EmptyState icon={<VehicleIcon />} text="No active trips." hint="Start a trip to see vehicle status here." />}
             />
             <PaginatedPanel title="SOS alerts" icon={<SosIcon />} items={dashboard.sosAlerts} pageSize={5}
-              renderItem={(alert) => <SosAlertCard key={alert.id} alert={alert} />}
+              renderItem={(alert) => <SosAlertCard key={alert.id} alert={alert} location={alertLocations[alert.id]} />}
               emptyState={<EmptyState icon={<SosIcon />} text="No SOS alerts triggered." hint="All vehicles are operating normally." />}
             />
           </section>
@@ -304,7 +319,7 @@ function PassengerCard({ passenger }) {
   );
 }
 
-function SosAlertCard({ alert }) {
+function SosAlertCard({ alert, location }) {
   return (
     <article className="group relative overflow-hidden rounded-lg border border-danger-200 bg-surface-sos p-4 transition-all duration-150 hover:border-danger-300 hover:shadow-sm">
       <span className="absolute left-0 top-0 h-full w-1 rounded-l-lg bg-danger-500" />
@@ -328,6 +343,7 @@ function SosAlertCard({ alert }) {
             {alert.coordinates.lat ?? "unknown"}, {alert.coordinates.lng ?? "unknown"}
           </span>
         </p>
+        {location && <p>Location: <span className="font-medium text-text-primary">{location}</span></p>}
         <time dateTime={alert.triggeredAt}>
           {new Date(alert.triggeredAt).toLocaleString()}
         </time>
