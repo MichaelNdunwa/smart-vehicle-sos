@@ -59,13 +59,18 @@ module.exports = {
         "pulse-sos": {
           "0%, 100%": { boxShadow: "0 0 0 0 rgba(199, 31, 55, 0.4)" },
           "50%": { boxShadow: "0 0 0 6px rgba(199, 31, 55, 0)" }
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" }
         }
       },
       animation: {
         "fade-in-up": "fade-in-up 0.4s ease-out",
         "fade-in-up-delayed": "fade-in-up 0.4s ease-out 0.1s both",
         "pulse-dot": "pulse-dot 2s ease-in-out infinite",
-        "pulse-sos": "pulse-sos 2s ease-in-out infinite"
+        "pulse-sos": "pulse-sos 2s ease-in-out infinite",
+        shimmer: "shimmer 2s ease-in-out infinite"
       }
     }
   },

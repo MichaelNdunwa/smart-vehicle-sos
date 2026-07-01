@@ -17,12 +17,14 @@ const initialState = {
 export function useDashboard() {
   const [dashboard, setDashboard] = useState(initialState);
   const [connected, setConnected] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch(`${API_URL}/api/dashboard`)
       .then((response) => response.json())
       .then((data) => setDashboard({ ...initialState, ...data }))
-      .catch(() => setDashboard(initialState));
+      .catch(() => setDashboard(initialState))
+      .finally(() => setLoading(false));
 
     const socket = io(API_URL);
 
@@ -48,5 +50,5 @@ export function useDashboard() {
     }, {});
   }, [dashboard.gpsLogs]);
 
-  return { dashboard, connected, activeTrips, latestGpsByVehicle };
+  return { dashboard, connected, activeTrips, latestGpsByVehicle, loading };
 }

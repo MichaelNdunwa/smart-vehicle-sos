@@ -6,11 +6,12 @@ import OverviewMap from "../components/OverviewMap";
 import PaginatedPanel from "../components/PaginatedPanel";
 import NIGERIAN_STATES from "../data/nigerianStates";
 import { reverseGeocode } from "../utils/reverseGeocode";
+import { MetricCardSkeleton, ListCardSkeleton } from "../components/Skeleton";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 export default function OverviewPage() {
-  const { dashboard, connected, activeTrips, latestGpsByVehicle } = useDashboard();
+  const { dashboard, connected, activeTrips, latestGpsByVehicle, loading } = useDashboard();
   const [vehicleId, setVehicleId] = useState("VH-001");
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
@@ -77,10 +78,15 @@ export default function OverviewPage() {
       </header>
 
       <section className="mb-6 grid grid-cols-4 gap-4 max-lg:grid-cols-2 max-sm:grid-cols-1">
-        <MetricCard label="Passengers boarded" value={dashboard.passengers.length} icon={<PersonIcon />} />
-        <MetricCard label="Active trips" value={activeTrips.length} icon={<TripIcon />} />
-        <MetricCard label="GPS updates" value={dashboard.gpsLogs.length} icon={<GpsIcon />} />
-        <MetricCard label="SOS alerts" value={dashboard.sosAlerts.length} danger icon={<SosIcon />} />
+        {loading
+          ? Array.from({ length: 4 }).map((_, i) => <MetricCardSkeleton key={i} />)
+          : <>
+              <MetricCard label="Passengers boarded" value={dashboard.passengers.length} icon={<PersonIcon />} />
+              <MetricCard label="Active trips" value={activeTrips.length} icon={<TripIcon />} />
+              <MetricCard label="GPS updates" value={dashboard.gpsLogs.length} icon={<GpsIcon />} />
+              <MetricCard label="SOS alerts" value={dashboard.sosAlerts.length} danger icon={<SosIcon />} />
+            </>
+        }
       </section>
 
       <div className="grid gap-5 lg:grid-cols-[2fr_1fr]">
@@ -91,14 +97,30 @@ export default function OverviewPage() {
           </section>
 
           <section className="grid gap-5 lg:grid-cols-2">
-            <PaginatedPanel title="Active vehicles" icon={<VehicleIcon />} items={activeTrips} pageSize={5}
-              renderItem={(trip) => <ActiveVehicleCard key={trip.id} trip={trip} gps={latestGpsByVehicle[trip.vehicleId]} />}
-              emptyState={<EmptyState icon={<VehicleIcon />} text="No active trips." hint="Start a trip to see vehicle status here." />}
-            />
-            <PaginatedPanel title="SOS alerts" icon={<SosIcon />} items={dashboard.sosAlerts} pageSize={5}
-              renderItem={(alert) => <SosAlertCard key={alert.id} alert={alert} location={alertLocations[alert.id]} />}
-              emptyState={<EmptyState icon={<SosIcon />} text="No SOS alerts triggered." hint="All vehicles are operating normally." />}
-            />
+            {loading ? (
+              <Panel title="Active vehicles" icon={<VehicleIcon />}>
+                <div className="grid gap-2.5">
+                  {Array.from({ length: 5 }).map((_, i) => <ListCardSkeleton key={i} />)}
+                </div>
+              </Panel>
+            ) : (
+              <PaginatedPanel title="Active vehicles" icon={<VehicleIcon />} items={activeTrips} pageSize={5}
+                renderItem={(trip) => <ActiveVehicleCard key={trip.id} trip={trip} gps={latestGpsByVehicle[trip.vehicleId]} />}
+                emptyState={<EmptyState icon={<VehicleIcon />} text="No active trips." hint="Start a trip to see vehicle status here." />}
+              />
+            )}
+            {loading ? (
+              <Panel title="SOS alerts" icon={<SosIcon />}>
+                <div className="grid gap-2.5">
+                  {Array.from({ length: 5 }).map((_, i) => <ListCardSkeleton key={i} />)}
+                </div>
+              </Panel>
+            ) : (
+              <PaginatedPanel title="SOS alerts" icon={<SosIcon />} items={dashboard.sosAlerts} pageSize={5}
+                renderItem={(alert) => <SosAlertCard key={alert.id} alert={alert} location={alertLocations[alert.id]} />}
+                emptyState={<EmptyState icon={<SosIcon />} text="No SOS alerts triggered." hint="All vehicles are operating normally." />}
+              />
+            )}
           </section>
         </div>
 
@@ -201,10 +223,18 @@ export default function OverviewPage() {
           </form>
 
           <div className="flex-1">
-            <PaginatedPanel title="Boarded passengers" icon={<PersonIcon />} items={dashboard.passengers} pageSize={5}
-              renderItem={(passenger) => <PassengerCard key={passenger.id} passenger={passenger} />}
-              emptyState={<EmptyState icon={<PersonIcon />} text="No passengers registered." hint="Passengers will appear here once they board a vehicle." />}
-            />
+            {loading ? (
+              <Panel title="Boarded passengers" icon={<PersonIcon />}>
+                <div className="grid gap-2.5">
+                  {Array.from({ length: 5 }).map((_, i) => <ListCardSkeleton key={i} />)}
+                </div>
+              </Panel>
+            ) : (
+              <PaginatedPanel title="Boarded passengers" icon={<PersonIcon />} items={dashboard.passengers} pageSize={5}
+                renderItem={(passenger) => <PassengerCard key={passenger.id} passenger={passenger} />}
+                emptyState={<EmptyState icon={<PersonIcon />} text="No passengers registered." hint="Passengers will appear here once they board a vehicle." />}
+              />
+            )}
           </div>
         </div>
       </div>
